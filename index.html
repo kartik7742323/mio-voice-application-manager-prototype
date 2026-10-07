@@ -1294,7 +1294,8 @@ function tlEmpty(what){ return '<div class="tl"><div class="empty"><div class="e
 function appRecs(){
   const r2=[["Mio Call ID","b7e1c4d2-9a0f-4c61-a8e3-5f2d7c9b1a04"],["Mio Call Status","Not Answered"],["Mio Call Type","Outbound"],["Mio Agent DID Number","+91 ******90"],["Mio Call Ended By","Carrier"],["Mio Call Start Date","24 Sep 2026, 01:59 PM"],["Mio AI Voice Agent Name","BBA English Hindi Agent"],["Mio Call Duration Seconds","0"]];
   const r1=[["Mio Call ID","5c1e9a02-77d4-4b1e-9a3f-2e61c0b8f4a7"],["Mio Call Status","Answered"],["Mio Call Type","Outbound"],["Mio Agent DID Number","+91 ******90"],["Mio Call Ended By","Customer"],["Mio Call Start Date","24 Sep 2026, 01:19 PM"],["Mio AI Voice Agent Name","BBA English Hindi Agent"],["Mio Call Duration Seconds","247"],["Mio Transcript","__TR__"],["Mio Call Recording","__REC__"],["Mio Call Summary","Ananya is keen on BBA with Marketing and wants hostel details. She asked for a callback after 6 PM."],["Callback Request","Yes","c"],["Qualification Status","Qualified","c"],["Preferred Call Time","After 6 PM","c"]];
-  return [{id:"t2",d:"24 Sep 2026",t:"02:00 PM",cfg:"c1",rows:r2},{id:"t1",d:"24 Sep 2026",t:"01:20 PM",cfg:"c1",rows:r1}];
+  const r0=[["Mio Call ID","3f9a7c21-5d40-4b8e-9c12-7a6e0d4b8f31"],["Mio Call Status","Answered"],["Mio Call Type","Outbound"],["Mio Agent DID Number","+91 ******90"],["Mio Call Ended By","Customer"],["Mio Call Start Date","18 Sep 2026, 11:04 AM"],["Mio AI Voice Agent Name","BBA English Hindi Agent"],["Mio Call Duration Seconds","96"],["Mio Call Summary","Ananya confirmed she submitted the BBA form and asked when the fee details will be shared."]];
+  return [{id:"t2",d:"24 Sep 2026",t:"02:00 PM",cfg:"c1",rows:r2},{id:"t1",d:"24 Sep 2026",t:"01:20 PM",cfg:"c1",rows:r1},{id:"t0",d:"18 Sep 2026",t:"11:05 AM",cfg:"s1",rows:r0}];
 }
 /* the application profile's tabs; Timeline and Dynamic Activity work here, the rest are shown only */
 function appProfileTabs(){ const t=S.tl.ptab||"timeline";
@@ -1307,22 +1308,22 @@ function daRecCard(r,c){ const open=!S.tl.cardShut[r.id], rows=r.def?r.rows:live
     '<div class="dacard"><div class="dacard-h"><b>'+esc(c?c.title:"")+'</b><button type="button" data-act="daCard" data-id="'+r.id+'" aria-expanded="'+open+'" aria-label="'+(open?'Collapse':'Expand')+' record">'+(open?'▴':'▾')+'</button></div>'+
     (open?'<table class="kvt"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x[0])+(x[2]==="c"?' <span class="mt-micro">· custom field</span>':'')+'</td><td>'+kvVal(x[1],r.id)+'</td></tr>').join("")+'</tbody></table>':'')+'</div></div></div>'; }
 /* the application profile's Dynamic Activity tab, as on the lead profile: Activity Type, then the activity, then the user.
-   System Activity offers Mio AI Voice, Mio Platform and the Mio Voice activities on the application's form, and opens on the one holding the latest Mio call */
+   System Activity offers only the system configs that hold records on this application, whatever form they're on, and opens on the one holding the latest Mio call */
 function appDaTab(){
   const form="f_bba", recs=(S.mode==="empty"||!cfg("c1"))?[]:appRecs();
-  const sysList=D.configs.filter(c=>c.sys).concat(D.configs.filter(c=>c.mio&&(c.forms||[]).includes(form)));
+  const sysList=D.configs.filter(c=>c.sys).concat(D.configs.filter(c=>c.mio)).filter(c=>recs.some(r=>r.cfg===c.id));
   const defList=D.configs.filter(c=>!c.sys&&!c.mio&&(c.forms||[]).includes(form));
   const type=S.tl.daType||"system", list=type==="system"?sysList:defList;
   let sel=S.tl.daCfg;
-  if(!sel||!list.some(c=>c.id===sel)) sel=type==="system"?((recs[0]&&list.some(c=>c.id===recs[0].cfg))?recs[0].cfg:"s1"):(list[0]&&list[0].id);
-  const c=cfg(sel), rows=type==="system"?recs.filter(r=>r.cfg===sel):defaultRecs(sel);
+  if(!sel||!list.some(c=>c.id===sel)) sel=type==="system"?((recs[0]&&list.some(c=>c.id===recs[0].cfg))?recs[0].cfg:(list[0]&&list[0].id)):(list[0]&&list[0].id);
+  const c=sel?cfg(sel):null, rows=!sel?[]:type==="system"?recs.filter(r=>r.cfg===sel):defaultRecs(sel);
   const opt=(arr,v)=>arr.map(o=>'<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>'+esc(o[1])+'</option>').join("");
   return '<div class="dahead"><h2>Dynamic Activity</h2><div class="grow"></div>'+
     '<select class="inp" data-bind="daType" aria-label="Activity Type">'+opt([["default","Default Dynamic Activity"],["system","System Activity"]],type)+'</select>'+
-    '<select class="inp" data-bind="daCfg" aria-label="Activity">'+opt(list.map(x=>[x.id,x.title+(x.status===false?" (inactive)":"")]),sel)+'</select>'+
+    '<select class="inp" data-bind="daCfg" aria-label="Activity"'+(list.length?'>'+opt(list.map(x=>[x.id,x.title+(x.status===false?" (inactive)":"")]),sel):' disabled><option>No activities with records</option>')+'</select>'+
     '<select class="inp" disabled aria-label="User"><option>All Users</option></select></div>'+
     (rows.length?'<div class="tl">'+rows.map(r=>daRecCard(r,c)).join("")+'</div>'
-      :'<div class="tl"><div class="empty"><div class="ei">'+ICO.clock+'</div><h2>No records in this activity yet</h2><p>'+(type==="system"?'Mio call records for this application show here.':'Records added to this activity on this application show here.')+'</p></div></div>');
+      :'<div class="tl"><div class="empty"><div class="ei">'+ICO.clock+'</div><h2>'+(type==="system"&&!list.length?'No system activity on this application yet':'No records in this activity yet')+'</h2><p>'+(type==="system"?'Mio call records for this application show here once a call is made.':'Records added to this activity on this application show here.')+'</p></div></div>');
 }
 function tlApp(){
   const c1=cfg("c1"), cfgT=c1?c1.title:"Mio Voice - English Hindi (BBA)";
@@ -1334,7 +1335,9 @@ function tlApp(){
     daItem("t2","24 Sep 2026","02:00 PM",cfgT,"Application 'BBA-2026-01842'","24th September 2026 2:00PM","Ananya Verma",r2,"Not answered, so the transcript, recording, summary and custom fields are empty and hidden.")+
     lineItem("24 Sep 2026","01:58 PM","Mio AI Call Campaign initiated for Application '<b>BBA-2026-01842</b>' from '<b>BBA 2026</b>' by Kavya Nair · campaign BBA Payment Reminder <span class=\"newtag\">NEW AM CODE</span>")+
     daItem("t1","24 Sep 2026","01:20 PM",cfgT,"Application 'BBA-2026-01842'","24th September 2026 1:20PM","Ananya Verma",r1,"")+
-    lineItem("24 Sep 2026","01:15 PM","Mio AI Call Campaign initiated for Application '<b>BBA-2026-01842</b>' from '<b>BBA 2026</b>' by Kavya Nair · campaign BBA Follow-up — Sept <span class=\"newtag\">NEW AM CODE</span>")+'</div>';
+    lineItem("24 Sep 2026","01:15 PM","Mio AI Call Campaign initiated for Application '<b>BBA-2026-01842</b>' from '<b>BBA 2026</b>' by Kavya Nair · campaign BBA Follow-up — Sept <span class=\"newtag\">NEW AM CODE</span>")+
+    daItem("t0","18 Sep 2026","11:05 AM","Mio AI Voice","Application 'BBA-2026-01842'","18th September 2026 11:05AM","Ananya Verma",R[2].rows,"Saved in Mio AI Voice: on 18 Sep the agent still wrote there. Its config was changed later, and past records stay where they were.")+
+    lineItem("18 Sep 2026","11:02 AM","Mio AI Call Campaign initiated for Application '<b>BBA-2026-01842</b>' from '<b>BBA 2026</b>' by Kavya Nair · campaign BBA Form Submitted <span class=\"newtag\">NEW AM CODE</span>")+'</div>';
 }
 function tlLead(){
   const prof='<div class="profile"><div class="av">AV</div><div style="flex:1;min-width:0"><div class="pn">Ananya Verma</div><div class="pmeta"><span>Lead ID <b>LD-778214</b></span><span>Applications <b>BBA 2026</b></span></div></div><span class="badge" style="background:var(--lead-bg);color:var(--lead-fg)">Lead</span></div>';
@@ -1939,7 +1942,7 @@ const COV=[
   ["P_02","Dynamic Activity Config → Layout: Description, then the "+SYS_FIELDS.length+" Mio system fields in Default Fields, in the live Mio AI Voice order, each system field marked with the Mio AI Voice icon. No Activity Owner. Custom fields dragged in from Layout Elements and removed freely. Limit meter, and Show Limit with the config limit and the custom field limit (+100 each, system fields excluded).","cov"],
   ["P_03","Dynamic Activity Config list: Mio configs show their modules in Applicable On like any config, with no module-plus-Mio label, and the Modules filter offers Lead Manager, Opportunity Manager and Application Manager. Mio AI Voice now also applies to Application Manager (Lead Manager +2). Mio AI Voice and Mio Platform stay greyed, deactivation is blocked while agents use a config, and Mio configs have no Delete. Edit mode: the title, the Mio choice, the module and the form are locked.","cov"],
   ["P_04","Agent Management: Application Manager group (forms with nested agents, search) for Bolna and Sarvam agents. Add and edit with an internal-only vendor choice and each vendor's identity fields, an onboarding note, a form locked after save, Select Mio Voice Activity inside Goal &amp; mapping (Mio AI Voice always listed first, then the form's Mio Voice activities), optional goal mapping set together or not at all (custom fields only; Not set when skipped), the live goal dropdowns, Context Mapping grouped by every config on the form with View JSON, one agent ID per form, and config change and delete both blocked while the agent is busy (live automation, calls running or scheduled retries).","cov"],
-  ["P_05","Timelines: inline View Activity card on the application (Description, then system and custom fields, empty ones hidden), the lead pointer line, the inbound fallback record on the lead, and each entry's activity note written from the owner (Mio AI Voice) and description (Dynamic Activity Created by Mio AI Calling). The application profile also has a Dynamic Activity tab: System Activity offers Mio AI Voice, Mio Platform and the form's Mio Voice activities, opens on the one holding the latest call, and lists its records newest first in the same card; Default Dynamic Activity never shows them.","cov"],
+  ["P_05","Timelines: inline View Activity card on the application (Description, then system and custom fields, empty ones hidden), the lead pointer line, the inbound fallback record on the lead, and each entry's activity note written from the owner (Mio AI Voice) and description (Dynamic Activity Created by Mio AI Calling). The application profile also has a Dynamic Activity tab: System Activity offers only the system configs that hold records on the application, opens on the one holding the latest call, and lists its records newest first in the same card; Default Dynamic Activity never shows them.","cov"],
   ["P_06","Listing: Advanced Filter: Dynamic Activity as the third module, then Select Activity (the config) and one of its fields, operators by type, latest-record matching, Is Empty vs Has no record, and the 20/3 caps shown. Only one AND group is simulated.","par"],
   ["P_08","Bulk Campaign: Bulk Action → Send to Mio AI Voice with no form picker, only the form's agents (Bolna and Sarvam), scheduled or immediate retry, a charged test call, cost preview, the METS gate and a no-phone skip notice.","cov"],
   ["P_09","Communication Report: Source chips including Application Manager and Application Manager Auto. Job report with Job ID, Automation ID, Job from: Application Manager plus an ⓘ for the form, application KPIs (Goal Achieved shows Not set when the job's agent has no goal mapping), Applications Overview, call details, and Download columns with transcript and summary (for Lead Manager and Opportunity Manager too) and no recording URL.","cov"],
@@ -2000,6 +2003,9 @@ function renderNotes(){
     '<h3>Assumptions: the prototype talking back to the PRD</h3><ol>'+ASSUME.map(a=>'<li>'+a+'</li>').join("")+'</ol>'+
     '<h3>What is simulated</h3><ul>'+SIMS.map(s=>'<li>'+s+'</li>').join("")+'</ul>'+
     '<h3>Changelog</h3><ul>'+
+    '<li><b>v2</b>, 7 Oct 2026, with PRD v15:<ol>'+
+    '<li>Application profile, Dynamic Activity tab. <b>Changed:</b> System Activity lists only the system configs that hold records on the application, whatever form they\'re on. Sample data: Ananya has an older call saved in Mio AI Voice, so the list shows two.</li>'+
+    '</ol></li>'+
     '<li><b>v2</b>, 7 Oct 2026, with PRD v14:<ol>'+
     '<li>Application profile. <b>Added:</b> a Dynamic Activity tab next to Timeline, as on the lead profile. System Activity offers Mio AI Voice, Mio Platform and the form\'s Mio Voice activities, and opens on the one holding the latest call. Records show newest first, in the same card as the timeline.</li>'+
     '<li>Record card. <b>Changed:</b> the transcript opens with View Transcript, as on the lead profile.</li>'+
