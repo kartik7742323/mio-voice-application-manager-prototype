@@ -301,7 +301,9 @@ select.inp:disabled{background:var(--bg-subtler);color:var(--fg-3)}
 .mapcol{border:1px solid var(--border-1);border-radius:var(--r-md);min-height:320px;display:flex;flex-direction:column;overflow:hidden}
 .mapcol .mh{padding:var(--sp-3) var(--sp-4);font-weight:var(--fw-600);color:var(--fg-2);border-bottom:1px solid var(--border-2);background:var(--bg-subtler)}
 .modopt{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--border-2);width:100%;text-align:left}
-.modopt[aria-selected="true"]{background:var(--brand-blue-50);font-weight:var(--fw-600)}
+.modopt[aria-selected="true"]{background:var(--border-2);font-weight:var(--fw-600);box-shadow:inset 3px 0 0 var(--fg-2)}
+.modopt .arr{margin-left:auto;font-size:10px;color:var(--fg-2)}
+.modopt .ok+.arr{margin-left:8px}
 .modopt[aria-disabled="true"]{color:var(--fg-4);cursor:not-allowed}
 .modopt[aria-disabled="true"][aria-selected="true"]{color:var(--fg-1)}
 .modopt .ok{margin-left:auto;width:18px;height:18px;border-radius:var(--r-pill);background:var(--success-fg);color:#fff;display:grid;place-items:center;font-size:11px}
@@ -676,6 +678,9 @@ const LEAD_FIELDS=["Name","Email","Mobile","Course","Specialization","City","Sta
 const FORM_FIELDS=["Application No.","Program Applied","Application Stage","Payment Status","Application Completion Date","12th Percentage"];
 const KEYOF=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
 const MODULES=["Lead Manager","Opportunity Manager","Application Manager"];
+/* the account's opportunity lists, shown when Opportunity is opened in Applicable For Mapping */
+const OPP_LISTS=[{id:"ol1",n:"Young Bankers Program"},{id:"ol2",n:"Executive MBA Enquiries"},{id:"ol3",n:"Scholarship Interest 2026"},{id:"ol4",n:"Alumni Referrals"},{id:"ol5",n:"Re-enquiry Pool 2026"},{id:"ol6",n:"Campus Visit Follow-ups"},{id:"ol7",n:"Fee Waiver Requests"},{id:"ol8",n:"Webinar Registrations"}];
+const oppName=id=>(OPP_LISTS.find(x=>x.id===id)||{n:id}).n;
 /* Mio Voice config forms and Mio AI Voice share Lead Manager's live system fields; nothing is added for any module */
 const MIOAI_FIELDS=SYS_FIELDS;
 const MOD_NAMES={am:"Application Manager",lm:"Lead Manager",op:"Opportunity Manager"}, MOD_ORDER=["am","lm","op"];
@@ -790,7 +795,7 @@ function baseConfigs(){return [
   {id:"n2",title:"Document Collection",mio:false,mods:"Application Manager",forms:["f_bba"],custom:["cf_docs"],score:0,status:true,start:"05 Aug 2026 11:30 AM",upBy:"Rahul Menon",upOn:"23 Sep 2026 06:53 PM"},
   {id:"s1",title:"Mio AI Voice",sys:true,mods:"Lead Manager +2",custom:[],status:true,start:"22 Jul 2026 01:34 PM",upBy:"NPF Automation",upOn:"14 Sep 2026 11:42 AM"},
   {id:"s2",title:"Mio Platform",sys:true,mods:"Lead Manager +1",status:true,start:"22 Sep 2026 03:23 PM",upBy:"NPF Automation",upOn:"23 Sep 2026 03:23 PM"},
-  {id:"n3",title:"import csv activity",mio:false,mods:"Application Manager +2",forms:["f_bba","f_mba","f_btech"],custom:["cf_lang"],score:0,status:true,start:"05 Aug 2026 11:30 AM",upBy:"Rahul Menon",upOn:"23 Sep 2026 06:53 PM"}
+  {id:"n3",title:"import csv activity",mio:false,mods:"Application Manager +2",forms:["f_bba","f_mba","f_btech"],opps:["ol1","ol3"],custom:["cf_lang"],score:0,status:true,start:"05 Aug 2026 11:30 AM",upBy:"Rahul Menon",upOn:"23 Sep 2026 06:53 PM"}
 ];}
 function emptyConfigs(){return baseConfigs().filter(c=>!c.mio);}
 function edgeConfigs(){
@@ -820,7 +825,7 @@ const OM_LISTS=[{n:"Young Bankers Program",agents:[{id:"o1",name:"Document Follo
 
 /* ---------------- state ---------------- */
 const S={tab:"da",role:"admin",mode:"populated",acct:true,drawer:null,
-  da:{view:"list",editId:null,f:null,errs:[],mapMods:[],mapForms:[],mapErr:"",mapSearch:"",lbSearch:"",lbOpen:{def:true,cus:true},modF:"all"},
+  da:{view:"list",editId:null,f:null,errs:[],mapForms:[],mapLeads:false,mapOpps:[],mapOpen:"am",mapErr:"",mapSearch:"",lbSearch:"",lbOpen:{def:true,cus:true},modF:"all"},
   ag:{sel:"a1",mode:null,f:null,errs:{},search:"",vendor:"bolna",exp:{}},
   tl:{which:"app",open:{}},
   dl:{type:"system",name:"all",mod:"all",total:false},
@@ -934,17 +939,19 @@ function daRow(c){
     '<td><button type="button" class="switch sm" role="switch" aria-checked="'+c.status+'" data-act="daStatus" data-id="'+c.id+'" aria-label="Status of '+esc(c.title)+'"></button></td>'+
     '<td><button type="button" class="kebab" data-act="daMenu" data-menu="1" data-id="'+c.id+'" aria-label="Actions for '+esc(c.title)+'" aria-haspopup="menu">⋯</button></td></tr>';
 }
-function blankDA(){return {title:"",mio:false,accept:"Only-API",mods:[],forms:[],predated:false,score:false,scoreVal:0,limit:false,del:false,edit:false,never:true,start:"",tz:"(GMT+05:30) India Standard Time"};}
+function blankDA(){return {title:"",mio:false,accept:"Only-API",mods:[],forms:[],leads:false,opps:[],predated:false,score:false,scoreVal:0,limit:false,del:false,edit:false,never:true,start:"",tz:"(GMT+05:30) India Standard Time"};}
 function fromCfg(c){
-  if(c.mio) return {title:c.title,mio:true,accept:"SYSTEM-ONLY",mods:modIds(c),forms:c.forms.slice(),predated:true,score:false,scoreVal:0,limit:false,del:false,edit:false,never:true,start:c.start,tz:"(GMT+05:30) India Standard Time"};
-  return {title:c.title,mio:false,accept:"Both-API-Web",mods:c.mods.indexOf("+")>-1?["am","lm","op"].slice(0,1+(+c.mods.split("+")[1])):["am"],forms:(c.forms||[]).slice(),predated:true,score:!!c.score,scoreVal:c.score||0,limit:false,del:true,edit:true,never:true,start:c.start,tz:"(GMT+05:30) India Standard Time"};
+  if(c.mio) return {title:c.title,mio:true,accept:"SYSTEM-ONLY",mods:modIds(c),forms:c.forms.slice(),leads:modIds(c).includes("lm"),opps:(c.opps||[]).slice(),predated:true,score:false,scoreVal:0,limit:false,del:false,edit:false,never:true,start:c.start,tz:"(GMT+05:30) India Standard Time"};
+  const mods=modIds(c);
+  return {title:c.title,mio:false,accept:"Both-API-Web",mods:mods,forms:(c.forms||[]).slice(),leads:mods.includes("lm"),opps:mods.includes("op")?(c.opps||[]).slice():[],predated:true,score:!!c.score,scoreVal:c.score||0,limit:false,del:true,edit:true,never:true,start:c.start,tz:"(GMT+05:30) India Standard Time"};
 }
 function modsText(f){
   if(!f.mods.length) return "";
-  const names={am:"Application Manager",lm:"Lead Manager",op:"Opportunity"};
-  let t=f.mods.map(m=>names[m]).join(", ");
-  if(f.mods.includes("am")) t+=f.forms.length?(f.mio?"  ·  form: "+formName(f.forms[0]):"  ·  "+f.forms.length+" "+plural(f.forms.length,"form","forms")+": "+f.forms.map(formName).join(", ")):"  ·  no form selected yet";
-  return t;
+  return f.mods.map(m=>{
+    if(m==="am") return "Application Manager  ·  "+(f.forms.length?(f.mio?"form: "+formName(f.forms[0]):f.forms.length+" "+plural(f.forms.length,"form","forms")+": "+f.forms.map(formName).join(", ")):"no form selected yet");
+    if(m==="lm") return "Lead Manager  ·  Leads";
+    const o=f.opps||[]; return "Opportunity  ·  "+(o.length===1?"list: "+oppName(o[0]):o.length+" lists");
+  }).join("   |   ");
 }
 function daStep1(){
   const f=S.da.f, ed=!!S.da.editId, L=f.mio;
@@ -974,28 +981,43 @@ function mioCard(f,ed){
 }
 function daMap(){
   const f=S.da.f, L=f.mio, ed=!!S.da.editId;
-  /* a Mio config works on exactly one module and, on Application Manager, one application form; both are picked when it's created and fixed after save */
-  const amLocked=L&&ed;
-  const opt=(id,label)=>{ const sel=S.da.mapMods.includes(id), lock=amLocked;
-    return '<button type="button" class="modopt" role="option" aria-selected="'+sel+'" data-act="mapMod" data-id="'+id+'"'+(lock?' aria-disabled="true" data-why="A Mio config\'s module and form are set when it\'s created and can\'t be changed."':'')+'>'+label+(lock&&sel?' <span class="mt-micro">'+ICO.lock+' fixed</span>':'')+(sel?'<span class="ok">✓</span>':'')+'</button>'; };
+  /* as on today's mapping screen, each module opens its own list: Leads, the opportunity lists or the application forms.
+     A Mio config picks from one module only (on Application Manager, exactly one form), and its mapping is fixed once saved */
+  const locked=L&&ed, open=S.da.mapOpen||"am", picked=pickedMods();
+  const opt=(id,label)=>{ const isOpen=open===id, mapped=picked.includes(id), dis=locked&&!mapped;
+    return '<button type="button" class="modopt" role="option" aria-selected="'+isOpen+'" data-act="mapOpen" data-id="'+id+'"'+(dis?' aria-disabled="true" data-why="A Mio config\'s module and form are set when it\'s created and can\'t be changed."':'')+'>'+label+(locked&&mapped?' <span class="mt-micro">'+ICO.lock+' fixed</span>':'')+(mapped?'<span class="ok">✓</span>':'')+(isOpen?'<span class="arr" aria-hidden="true">▸</span>':'')+'</button>'; };
   const q=(S.da.mapSearch||"").toLowerCase();
-  const forms=D.forms.filter(x=>!q||x.n.toLowerCase().includes(q));
-  const amOn=S.da.mapMods.includes("am");
-  const search='<div style="padding:10px 12px"><input class="inp" placeholder="Search value" data-bind="mapSearch" value="'+esc(S.da.mapSearch||"")+'" aria-label="Search forms"></div>';
-  let col;
-  const modName={lm:"Lead Manager",op:"Opportunity Manager"}[S.da.mapMods[0]];
-  if(!amOn) col='<p class="mt-meta" style="padding:16px">'+(L?(amLocked?'This Mio config is on <b>'+(modName||"no module")+'</b>. Its module was set when it was created and can\'t be changed. To use one on another module, create a new Mio config.':(modName?'No form is needed on '+modName+'.':'Pick one module on the left. On Application Manager, you\'ll also pick one form.')):'Select Application Manager on the left to pick forms.')+'</p>';
-  else if(amLocked) col='<div style="padding:12px"><label class="chk" style="cursor:default"><input type="radio" checked disabled aria-label="'+esc(formName(S.da.mapForms[0]))+'"><span>'+esc(formName(S.da.mapForms[0]))+'</span></label><p class="mt-meta" style="margin:8px 4px 0">'+ICO.lock+' Set when this config was created. A Mio config works on one application form, and it can\'t be changed. To use these fields on another form, create a new Mio config there.</p></div>';
-  else if(L) col=search+'<p class="mt-micro" style="padding:0 12px 6px">Pick one form. A Mio config works on one application form only.</p><div role="radiogroup" aria-label="Application form" style="overflow-y:auto;max-height:380px">'+(forms.map(x=>{ const on=S.da.mapForms[0]===x.id;
-      return '<label class="chk" title="'+esc(x.n)+'"><input type="radio" name="mioForm" data-act="mapForm1" data-id="'+x.id+'" '+(on?'checked':'')+'><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.n)+'</span></label>'; }).join("")||'<p class="mt-meta" style="padding:12px">No forms match.</p>')+'</div>';
-  else col=search+'<label class="chk"><input type="checkbox" data-act="mapAll" '+(forms.length&&forms.every(x=>S.da.mapForms.includes(x.id))?'checked':'')+'><b>Select all</b></label>'+
-     '<div style="overflow-y:auto;max-height:380px">'+(forms.map(x=>{ const on=S.da.mapForms.includes(x.id);
-        return '<label class="chk" title="'+esc(x.n)+'"><input type="checkbox" data-act="mapForm" data-id="'+x.id+'" '+(on?'checked':'')+'><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.n)+'</span></label>'; }).join("")||'<p class="mt-meta" style="padding:12px">No forms match.</p>')+'</div>';
+  const search=what=>'<div style="padding:10px 12px"><input class="inp" placeholder="Search value" data-bind="mapSearch" value="'+esc(S.da.mapSearch||"")+'" aria-label="Search '+what+'"></div>';
+  const fixNote=t=>'<div class="banner warn" style="margin:12px 12px 4px">'+ICO.lock+'<div><b>Can\'t be changed later.</b> '+t+'</div></div>';
+  const lockedNote=t=>'<p class="mt-meta" style="margin:8px 16px 12px">'+ICO.lock+' '+t+'</p>';
+  const row=(type,act,id,label,on,name)=>'<label class="chk" title="'+esc(label)+'"'+(locked?' style="cursor:default"':'')+'><input type="'+type+'"'+(name?' name="'+name+'"':'')+(locked?' disabled':' data-act="'+act+'" data-id="'+id+'"')+(on?' checked':'')+' aria-label="'+esc(label)+'"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(label)+'</span></label>';
+  const empty='<p class="mt-meta" style="padding:12px">No matches.</p>';
+  let head, col;
+  if(open==="lm"){
+    head="Lead Manager";
+    col=(L&&!locked?fixNote('Once this config is saved, its module can\'t be changed.'):'')+row("checkbox","mapLeads","leads","Leads",S.da.mapLeads)+
+      (locked?lockedNote('Set when this config was created. A Mio config\'s module can\'t be changed. To use one on another module, create a new Mio config.'):'');
+  } else if(open==="op"){
+    head="Opportunity List";
+    if(locked) col=OPP_LISTS.filter(x=>S.da.mapOpps.includes(x.id)).map(x=>row("checkbox","","",x.n,true)).join("")+lockedNote('Set when this config was created. A Mio config\'s module and opportunity lists can\'t be changed. To use one elsewhere, create a new Mio config.');
+    else { const lists=OPP_LISTS.filter(x=>!q||x.n.toLowerCase().includes(q));
+      col=(L?fixNote('Once this config is saved, its module and opportunity lists can\'t be changed.'):'')+search("opportunity lists")+
+        '<label class="chk"><input type="checkbox" data-act="mapOppAll" '+(lists.length&&lists.every(x=>S.da.mapOpps.includes(x.id))?'checked':'')+'><b>Select all</b></label>'+
+        '<div style="overflow-y:auto;max-height:340px">'+(lists.map(x=>row("checkbox","mapOpp",x.id,x.n,S.da.mapOpps.includes(x.id))).join("")||empty)+'</div>'; }
+  } else {
+    head="Application Manager List";
+    const forms=D.forms.filter(x=>!q||x.n.toLowerCase().includes(q));
+    if(locked) col=(S.da.mapForms.length?row("radio","","",formName(S.da.mapForms[0]),true):'')+lockedNote('Set when this config was created. A Mio config works on one application form, and it can\'t be changed. To use these fields on another form, create a new Mio config there.');
+    else if(L) col=fixNote('Once this config is saved, its module and application form can\'t be changed.')+search("forms")+'<p class="mt-micro" style="padding:0 12px 6px">Pick one form.</p>'+
+      '<div role="radiogroup" aria-label="Application form" style="overflow-y:auto;max-height:340px">'+(forms.map(x=>row("radio","mapForm1",x.id,x.n,S.da.mapForms[0]===x.id,"mioForm")).join("")||empty)+'</div>';
+    else col=search("forms")+'<label class="chk"><input type="checkbox" data-act="mapAll" '+(forms.length&&forms.every(x=>S.da.mapForms.includes(x.id))?'checked':'')+'><b>Select all</b></label>'+
+      '<div style="overflow-y:auto;max-height:340px">'+(forms.map(x=>row("checkbox","mapForm",x.id,x.n,S.da.mapForms.includes(x.id))).join("")||empty)+'</div>';
+  }
   return '<div class="drawer-head"><button type="button" class="modal-close" data-act="mapBack" aria-label="Back to Step 1" style="margin-left:0">'+ICO.back+'</button><h2 id="drawerTitle">Applicable For Mapping</h2><div class="grow"></div><button type="button" class="modal-close" data-act="closeDrawer" aria-label="Close">'+ICO.x+'</button></div>'+
-  '<div class="drawer-body"><div class="banner info">'+ICO.info+'<div>Select from Form List and map it to desired option.'+(L?' A Mio config works on one module and, on Application Manager, one application form. Only Application Manager agents on that form can pick it; Lead Manager and Opportunity Manager agents keep writing to Mio AI Voice.':'')+'</div></div>'+
+  '<div class="drawer-body">'+(L?'':'<div class="banner info">'+ICO.info+'<div>Select from Form List and map it to desired option.</div></div>')+
   (S.da.mapErr?'<div class="banner err" role="alert">'+ICO.alert+'<div>'+S.da.mapErr+'</div></div>':'')+
   '<div class="mapwrap"><div class="mapcol" role="listbox" aria-label="Applicable For Options"><div class="mh">Applicable For Options</div>'+opt("am","Application Manager")+opt("lm","Lead Manager")+opt("op","Opportunity")+'</div>'+
-  '<div class="mapcol"><div class="mh">'+(L?'Application Manager Form':'Application Manager List')+'</div>'+col+'</div></div></div>'+
+  '<div class="mapcol"><div class="mh">'+head+'</div>'+col+'</div></div></div>'+
   '<div class="drawer-foot"><button type="button" class="btn btn-secondary" data-act="mapBack">Cancel</button><div class="grow"></div><button type="button" class="btn btn-secondary" data-act="mapSave" data-exit="0">Save</button><button type="button" class="btn btn-primary" data-act="mapSave" data-exit="1">Save and Exit</button></div>';
 }
 function rLayout(el){
@@ -1600,18 +1622,24 @@ ACT.daLimit=()=>{ const used=Object.keys(D.fieldLib).length+27, cfgUsed=D.config
   const head=t=>'<p style="margin:0 0 6px;font-weight:600;color:var(--fg-1)">'+t+'</p>';
   openModal("Limits",head("Configs")+'<table class="kvt"><tbody><tr><td>Package limit</td><td>'+PKG_CFG_LIMIT+' configs</td></tr><tr><td>Mio AI Voice add-on</td><td>'+addon+'</td></tr><tr><td><b>Total</b></td><td><b>'+cfgTotal()+'</b></td></tr><tr><td>Used on this account</td><td>'+cfgUsed+'</td></tr></tbody></table>'+
     '<div style="height:16px"></div>'+head("Custom fields")+'<table class="kvt"><tbody><tr><td>Package limit</td><td>'+PKG_LIMIT+' custom fields</td></tr><tr><td>Mio AI Voice add-on</td><td>'+addon+'</td></tr><tr><td><b>Total</b></td><td><b>'+limitTotal()+'</b></td></tr><tr><td>Used on this account</td><td>'+used+'</td></tr></tbody></table><p class="mt-meta" style="margin-top:12px">The '+SYS_FIELDS.length+' Mio system fields never count toward the custom field limit. One Mio config can hold up to 150 custom fields.</p>','<button type="button" class="btn btn-primary" data-act="closeModal">Close</button>'); };
-ACT.daOpenMap=()=>{ const f=S.da.f; S.da.mapMods=f.mods.slice(); S.da.mapForms=f.forms.slice(); S.da.mapErr=""; S.da.mapSearch=""; S.drawer="map"; renderDrawer(); };
+ACT.daOpenMap=()=>{ const f=S.da.f; S.da.mapForms=f.forms.slice(); S.da.mapLeads=!!f.leads; S.da.mapOpps=(f.opps||[]).slice(); S.da.mapOpen=f.mods[0]||"am"; S.da.mapErr=""; S.da.mapSearch=""; S.drawer="map"; renderDrawer(); };
 ACT.mapBack=()=>{ S.drawer="step1"; renderDrawer(); };
-ACT.mapMod=b=>{ const id=b.dataset.id, m=S.da.mapMods, i=m.indexOf(id);
-  /* a Mio config takes one module: picking another replaces it, and leaving Application Manager clears the form */
-  if(S.da.f.mio){ S.da.mapMods=[id]; if(id!=="am") S.da.mapForms=[]; S.da.mapErr=""; renderDrawer(); return; }
-  if(i>=0) m.splice(i,1); else m.push(id); S.da.mapErr=""; renderDrawer(); };
+function pickedMods(){ return ["am","lm","op"].filter(m=>m==="am"?S.da.mapForms.length:m==="lm"?S.da.mapLeads:S.da.mapOpps.length); }
+/* a Mio config maps one module only: a pick in one module clears the others */
+function mioKeepOnly(mod){ if(!S.da.f.mio) return; const cleared=pickedMods().filter(m=>m!==mod); if(!cleared.length) return;
+  if(mod!=="am") S.da.mapForms=[]; if(mod!=="lm") S.da.mapLeads=false; if(mod!=="op") S.da.mapOpps=[];
+  toast("A Mio config works on one module, so "+cleared.map(m=>MOD_NAMES[m]).join(" and ")+" was cleared."); }
+ACT.mapOpen=b=>{ S.da.mapOpen=b.dataset.id; S.da.mapSearch=""; S.da.mapErr=""; renderDrawer(); };
 ACT.mapForm=b=>{ const id=b.dataset.id, arr=S.da.mapForms, i=arr.indexOf(id); if(i>=0) arr.splice(i,1); else arr.push(id); S.da.mapErr=""; renderDrawer(); };
 ACT.mapAll=()=>{ const q=(S.da.mapSearch||"").toLowerCase(), ids=D.forms.filter(x=>!q||x.n.toLowerCase().includes(q)).map(x=>x.id), all=ids.every(id=>S.da.mapForms.includes(id));
   S.da.mapForms=all?S.da.mapForms.filter(x=>!ids.includes(x)):S.da.mapForms.concat(ids.filter(id=>!S.da.mapForms.includes(id))); S.da.mapErr=""; renderDrawer(); };
 /* a Mio config works on exactly one application form */
-ACT.mapForm1=b=>{ S.da.mapForms=[b.dataset.id]; S.da.mapErr=""; renderDrawer(); };
-ACT.mapSave=b=>{ const f=S.da.f; f.mods=f.mio?S.da.mapMods.slice(0,1):S.da.mapMods.slice(); f.forms=f.mods.includes("am")?(f.mio?S.da.mapForms.slice(0,1):S.da.mapForms.slice()):[]; S.drawer="step1"; if(b.dataset.exit==="1") ACT.daSave({dataset:{next:"0"}}); else renderDrawer(); };
+ACT.mapForm1=b=>{ mioKeepOnly("am"); S.da.mapForms=[b.dataset.id]; S.da.mapErr=""; renderDrawer(); };
+ACT.mapLeads=()=>{ S.da.mapLeads=!S.da.mapLeads; if(S.da.mapLeads) mioKeepOnly("lm"); S.da.mapErr=""; renderDrawer(); };
+ACT.mapOpp=b=>{ const id=b.dataset.id, i=S.da.mapOpps.indexOf(id); if(i>=0) S.da.mapOpps.splice(i,1); else { mioKeepOnly("op"); S.da.mapOpps.push(id); } S.da.mapErr=""; renderDrawer(); };
+ACT.mapOppAll=()=>{ const q=(S.da.mapSearch||"").toLowerCase(), ids=OPP_LISTS.filter(x=>!q||x.n.toLowerCase().includes(q)).map(x=>x.id), all=ids.every(id=>S.da.mapOpps.includes(id));
+  if(all) S.da.mapOpps=S.da.mapOpps.filter(x=>!ids.includes(x)); else { mioKeepOnly("op"); S.da.mapOpps=S.da.mapOpps.concat(ids.filter(id=>!S.da.mapOpps.includes(id))); } S.da.mapErr=""; renderDrawer(); };
+ACT.mapSave=b=>{ const f=S.da.f, mods=pickedMods(); f.mods=f.mio?mods.slice(0,1):mods; f.forms=f.mods.includes("am")?(f.mio?S.da.mapForms.slice(0,1):S.da.mapForms.slice()):[]; f.leads=f.mods.includes("lm"); f.opps=f.mods.includes("op")?S.da.mapOpps.slice():[]; S.drawer="step1"; if(b.dataset.exit==="1") ACT.daSave({dataset:{next:"0"}}); else renderDrawer(); };
 ACT.daSave=b=>{ const f=S.da.f, e=[], t=f.title.trim().toLowerCase();
   if(!f.title.trim()) e.push("Activity Title is required.");
   else if(!S.da.editId&&(t==="mio ai voice"||t==="mio platform")) e.push("\""+esc(f.title.trim())+"\" is reserved for a system config. Choose another title.");
@@ -1621,8 +1649,8 @@ ACT.daSave=b=>{ const f=S.da.f, e=[], t=f.title.trim().toLowerCase();
   if(!f.mio&&!f.never&&!f.start) e.push("Start Date is required.");
   S.da.errs=e; if(e.length){ renderDrawer(); const bd=$("#drawer .drawer-body"); if(bd) bd.scrollTop=0; return; }
   let c;
-  if(S.da.editId){ c=cfg(S.da.editId); c.forms=f.forms.slice(); if(c.mio){ c.modList=sortMods(f.mods).map(x=>MOD_NAMES[x]); c.mods=modsLabel(c.modList); } if(!c.mio){ c.title=f.title.trim(); c.score=f.score?f.scoreVal:0; } c.upBy="Kavya Nair"; c.upOn=TODAY_TS; }
-  else { const ml=sortMods(f.mods).map(x=>MOD_NAMES[x]); c={id:"c"+Date.now(),title:f.title.trim(),mio:f.mio,mods:modsLabel(ml),modList:ml,forms:f.forms.slice(),custom:[],status:true,start:f.mio?TODAY_TS:(f.start||TODAY_TS),upBy:"Kavya Nair",upOn:TODAY_TS,score:f.score?f.scoreVal:0}; D.configs.unshift(c); S.da.editId=c.id; }
+  if(S.da.editId){ c=cfg(S.da.editId); c.forms=f.forms.slice(); c.opps=(f.opps||[]).slice(); c.leads=!!f.leads; c.modList=sortMods(f.mods).map(x=>MOD_NAMES[x]); c.mods=modsLabel(c.modList); if(!c.mio){ c.title=f.title.trim(); c.score=f.score?f.scoreVal:0; } c.upBy="Kavya Nair"; c.upOn=TODAY_TS; }
+  else { const ml=sortMods(f.mods).map(x=>MOD_NAMES[x]); c={id:"c"+Date.now(),title:f.title.trim(),mio:f.mio,mods:modsLabel(ml),modList:ml,forms:f.forms.slice(),opps:(f.opps||[]).slice(),leads:!!f.leads,custom:[],status:true,start:f.mio?TODAY_TS:(f.start||TODAY_TS),upBy:"Kavya Nair",upOn:TODAY_TS,score:f.score?f.scoreVal:0}; D.configs.unshift(c); S.da.editId=c.id; }
   closeDrawer();
   if(b.dataset.next==="1"){ S.da.view="layout"; S.da.lbSearch=""; render(); window.scrollTo(0,0); }
   else { render(); toast(c.title+" saved.",true); } };
@@ -1855,7 +1883,7 @@ function readHash(){ const h={}; location.hash.replace(/^#/,"").split("&").forEa
 
 /* ---------------- notes panel ---------------- */
 const COV=[
-  ["P_01","Dynamic Activity Config → New: New Dynamic Activity opens a menu, <i>What kind of activity?</i>, before the form opens. Mio Voice activity opens a Mio Voice config form with the fixed settings (system-only entry, predated, score, limit, delete, edit, dates) hidden, not shown as locked; Regular activity opens the normal form. There's no toggle in the form. The mapping offers Lead Manager, Opportunity Manager and Application Manager, and a Mio config picks exactly one of them; on Application Manager it also picks exactly one form, from a single-choice list. A note says a Mio config can't be deleted once it's created, only deactivated.","cov"],
+  ["P_01","Dynamic Activity Config → New: New Dynamic Activity opens a menu, <i>What kind of activity?</i>, before the form opens. Mio Voice activity opens a Mio Voice config form with the fixed settings (system-only entry, predated, score, limit, delete, edit, dates) hidden, not shown as locked; Regular activity opens the normal form. There's no toggle in the form. In the mapping, clicking a module opens its list, as on the live screen: Leads for Lead Manager, the opportunity lists for Opportunity and the forms for Application Manager. A Mio config picks from one module only; on Application Manager it picks exactly one form, from a single-choice list. A note says a Mio config can't be deleted once it's created, only deactivated.","cov"],
   ["P_02","Dynamic Activity Config → Layout: Description, then the "+SYS_FIELDS.length+" Mio system fields in Default Fields, in the live Mio AI Voice order, each system field marked with the Mio AI Voice icon. No Activity Owner. Custom fields dragged in from Layout Elements and removed freely. Limit meter, and Show Limit with the config limit and the custom field limit (+100 each, system fields excluded).","cov"],
   ["P_03","Dynamic Activity Config list: Mio configs show their modules in Applicable On like any config, with no module-plus-Mio label, and the Modules filter offers Lead Manager, Opportunity Manager and Application Manager. Mio AI Voice now also applies to Application Manager (Lead Manager +2). Mio AI Voice and Mio Platform stay greyed, deactivation is blocked while agents use a config, and Mio configs have no Delete. Edit mode: the title, the Mio choice, the module and the form are locked.","cov"],
   ["P_04","Agent Management: Application Manager group (forms with nested agents, search) for Bolna and Sarvam agents. Add and edit with an internal-only vendor choice and each vendor's identity fields, an onboarding note, a form locked after save, Select Mio Voice Config Form inside Goal &amp; mapping (Mio AI Voice always listed first, then the form's Mio Voice config forms), optional goal mapping set together or not at all (custom fields only; Not set when skipped), the live goal dropdowns, Context Mapping grouped by every config on the form with View JSON, one agent ID per form, and config change and delete both blocked while the agent is busy (live automation, calls running or scheduled retries).","cov"],
@@ -1893,6 +1921,7 @@ const ASSUME=[
   "<b>Same system fields everywhere.</b> Mio Voice config forms and Mio AI Voice have the same 11 system fields as Lead Manager today. Nothing is added for Application Manager or Opportunity Manager, and there's no Mio Agent DID Dial Code. <i>Owner: Engineering to confirm storage.</i>",
   "<b>Download column dropped.</b> Application Stage at Call Time came out of the job report's Download, since that system field is gone. <i>Owner: Product.</i>",
   "<b>Module fixed at creation.</b> A Mio config's one module, and on Application Manager its one form, are picked only when it's created and can't be changed afterwards. <i>Owner: Product.</i>",
+  "<b>Opportunity lists on a Mio config.</b> A Mio config on Opportunity can tick several opportunity lists, as any config can today, and they're locked once it's saved, like the module. Whether it should be limited to one list, like one form on Application Manager, is open. The lists in the sample are invented. <i>Owner: Product.</i>",
   "<b>Config limit.</b> Show Limit shows a package limit of 50 configs, a sample number, plus the +100 add-on. Whether inactive configs and the system configs count follows today's rule, for the DA team to confirm. <i>Owner: DA team.</i>"
 ];
 const SIMS=[
@@ -1918,6 +1947,12 @@ function renderNotes(){
     '<h3>Assumptions: the prototype talking back to the PRD</h3><ol>'+ASSUME.map(a=>'<li>'+a+'</li>').join("")+'</ol>'+
     '<h3>What is simulated</h3><ul>'+SIMS.map(s=>'<li>'+s+'</li>').join("")+'</ul>'+
     '<h3>Changelog</h3><ul>'+
+    '<li><b>v2</b>, 7 Oct 2026, mapping lists:<ol>'+
+    '<li>Applicable For Mapping. <b>Changed:</b> clicking a module on the left opens its list, as on the live screen. Lead Manager shows Leads, Opportunity shows the opportunity lists with search and Select all, and Application Manager shows the forms.</li>'+
+    '</ol></li>'+
+    '<li><b>v2</b>, 7 Oct 2026, with PRD v10:<ol>'+
+    '<li>Applicable For Mapping on a Mio config. <b>Removed:</b> the blue banner at the top. <b>Added:</b> a note where the module and form are picked: once the config is saved, its module and application form can\'t be changed.</li>'+
+    '</ol></li>'+
     '<li><b>v2</b>, 7 Oct 2026, with PRD v9:<ol>'+
     '<li>Mio config modules. <b>Changed:</b> a Mio config applies to exactly one module: Lead Manager, Opportunity Manager or Application Manager. Picking another module replaces the first. The module is fixed once the config is saved, like its form.</li>'+
     '</ol></li>'+
