@@ -382,6 +382,13 @@ body.dragging .lbsec[data-drop] .dropzone{border-color:var(--brand-blue);color:v
 .player .pb{flex:1;height:4px;border-radius:var(--r-pill);background:var(--border-1);position:relative;overflow:hidden}
 .player .pb span{position:absolute;left:0;top:0;bottom:0;background:var(--brand-blue);border-radius:var(--r-pill)}
 .player .tm{font-family:var(--font-mono);font-size:var(--fs-11);color:var(--fg-3)}
+.ptabs{border-left:none;padding-left:0;margin:0 0 var(--sp-4);border-bottom:1px solid var(--border-1);flex-wrap:wrap}
+.dahead{display:flex;align-items:center;gap:var(--sp-3);margin:0 0 var(--sp-3);flex-wrap:wrap}
+.dahead h2{margin:0;font-size:var(--fs-16);font-weight:var(--fw-600)}
+.dahead select.inp{width:auto;min-width:160px}
+.dacard-h{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--border-2);background:var(--bg-subtler);color:var(--fg-1)}
+.dacard-h button{font-size:var(--fs-12);color:var(--fg-3);padding:2px 6px;border-radius:var(--r-sm)}
+.dacard-h button:hover{background:var(--bg-subtle)}
 .transcript{max-height:220px;overflow-y:auto;border:1px solid var(--border-1);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);background:var(--bg-subtler);font-size:var(--fs-13);line-height:var(--lh-relaxed);white-space:pre-line}
 
 /* ---------- listing ---------- */
@@ -827,7 +834,7 @@ const OM_LISTS=[{n:"Young Bankers Program",agents:[{id:"o1",name:"Document Follo
 const S={tab:"da",role:"admin",mode:"populated",acct:true,drawer:null,
   da:{view:"list",editId:null,f:null,errs:[],mapForms:[],mapLeads:false,mapOpps:[],mapOpen:"am",mapErr:"",mapSearch:"",lbSearch:"",lbOpen:{def:true,cus:true},modF:"all"},
   ag:{sel:"a1",mode:null,f:null,errs:{},search:"",vendor:"bolna",exp:{}},
-  tl:{which:"app",open:{}},
+  tl:{which:"app",open:{},ptab:"timeline",daType:"system",daCfg:null,cardShut:{},trOpen:{}},
   dl:{type:"system",name:"all",mod:"all",total:false},
   ls:{form:"f_bba",afOpen:false,draft:[],applied:[]},
   bc:{sel:[],f:null,errs:[]},
@@ -1279,17 +1286,51 @@ function daItem(id,d,t,cfgT,forWhat,dateText,person,rows,note){ rows=liveRows(ro
   return '<div class="tli"><div class="when">'+d+'<span>'+t+'</span></div><div class="ic">'+ICO.phone+'</div><div class="body">Mio AI Voice has added a dynamic activity (<b>'+esc(cfgT)+'</b>) for '+esc(forWhat)+' via Mio AI Voice for activity date :'+dateText+' for '+esc(person)+' with the activity owner: '+esc(MIO_NOTE.owner)+' and description: '+esc(MIO_NOTE.desc)+'. <button type="button" class="linkbtn" data-act="tlOpen" data-id="'+id+'" aria-expanded="'+open+'">'+(open?"Hide Activity":"View Activity")+'</button>'+
     (open?'<div class="dacard"><table class="kvt"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r[0])+(r[2]==="c"?' <span class="mt-micro">· custom field</span>':'')+'</td><td>'+kvVal(r[1],id)+'</td></tr>').join("")+'</tbody></table>'+(note?'<p class="mt-micro" style="margin:8px 12px">'+esc(note)+'</p>':'')+'</div>':'')+'</div></div>';
 }
-function kvVal(v,id){ if(v==="__TR__") return '<div class="transcript">'+esc(TR_BBA)+'</div>'; if(v==="__REC__") return playerHTML(id); return esc(v); }
+function kvVal(v,id){ if(v==="__TR__") return S.tl.trOpen[id]?'<div class="transcript">'+esc(TR_BBA)+'</div><button type="button" class="linkbtn" data-act="trToggle" data-id="'+id+'">Hide Transcript</button>':'<button type="button" class="linkbtn" data-act="trToggle" data-id="'+id+'">View Transcript</button>'; if(v==="__REC__") return playerHTML(id); return esc(v); }
 function playerHTML(id){ const on=S.play===id; return '<div class="player"><button type="button" data-act="play" data-id="'+id+'" aria-label="'+(on?"Pause":"Play")+' recording">'+(on?ICO.pause:ICO.play)+'</button><div class="pb"><span style="width:'+(on?38:0)+'%"></span></div><span class="tm">'+(on?"1:34":"0:00")+' / 4:07</span></div>'; }
 function lineItem(d,t,html){ return '<div class="tli"><div class="when">'+d+'<span>'+t+'</span></div><div class="ic plain">'+ICO.mio+'</div><div class="body">'+html+'</div></div>'; }
 function tlEmpty(what){ return '<div class="tl"><div class="empty"><div class="ei">'+ICO.clock+'</div><h2>No Mio calls on this '+what+' yet</h2><p>When a Mio agent calls, each attempt shows up here as a record you can open inline with View Activity.</p></div></div>'; }
+/* Ananya Verma's Mio records on BBA-2026-01842, newest first; the Timeline and Dynamic Activity tabs both read them */
+function appRecs(){
+  const r2=[["Mio Call ID","b7e1c4d2-9a0f-4c61-a8e3-5f2d7c9b1a04"],["Mio Call Status","Not Answered"],["Mio Call Type","Outbound"],["Mio Agent DID Number","+91 ******90"],["Mio Call Ended By","Carrier"],["Mio Call Start Date","24 Sep 2026, 01:59 PM"],["Mio AI Voice Agent Name","BBA English Hindi Agent"],["Mio Call Duration Seconds","0"]];
+  const r1=[["Mio Call ID","5c1e9a02-77d4-4b1e-9a3f-2e61c0b8f4a7"],["Mio Call Status","Answered"],["Mio Call Type","Outbound"],["Mio Agent DID Number","+91 ******90"],["Mio Call Ended By","Customer"],["Mio Call Start Date","24 Sep 2026, 01:19 PM"],["Mio AI Voice Agent Name","BBA English Hindi Agent"],["Mio Call Duration Seconds","247"],["Mio Transcript","__TR__"],["Mio Call Recording","__REC__"],["Mio Call Summary","Ananya is keen on BBA with Marketing and wants hostel details. She asked for a callback after 6 PM."],["Callback Request","Yes","c"],["Qualification Status","Qualified","c"],["Preferred Call Time","After 6 PM","c"]];
+  return [{id:"t2",d:"24 Sep 2026",t:"02:00 PM",cfg:"c1",rows:r2},{id:"t1",d:"24 Sep 2026",t:"01:20 PM",cfg:"c1",rows:r1}];
+}
+/* the application profile's tabs; Timeline and Dynamic Activity work here, the rest are shown only */
+function appProfileTabs(){ const t=S.tl.ptab||"timeline";
+  return '<nav class="subtabs ptabs" aria-label="Application profile tabs">'+[["details","Application Details",1],["timeline","Timeline"],["notes","Notes",1],["comms","Communication Logs",1],["da","Dynamic Activity"],["calls","Call Logs",1]].map(x=>x[2]?'<button type="button" data-inert>'+x[1]+'</button>':'<button type="button" data-act="ptab" data-k="'+x[0]+'"'+(t===x[0]?' aria-current="page"':'')+'>'+x[1]+'</button>').join("")+'</nav>'; }
+/* a normal activity's record on this application, for the Default Dynamic Activity view */
+function defaultRecs(cid){ return (cid==="n1"&&S.mode!=="empty")?[{id:"dn1",d:"22 Sep 2026",t:"11:20 AM",def:true,rows:[["Description","Campus visit booked for the weekend"],["Activity Owner","Kavya Nair"],["Campus Visit Date","28 Sep 2026","c"]]}]:[]; }
+function daRecCard(r,c){ const open=!S.tl.cardShut[r.id], rows=r.def?r.rows:liveRows(r.rows);
+  return '<div class="tli"><div class="when">'+r.d+'<span>'+r.t+'</span></div><div class="ic'+(r.def?' plain':'')+'">'+(r.def?ICO.user:ICO.phone)+'</div><div class="body">'+
+    '<div class="mt-micro">Activity Created <span class="mt-meta">(Via - '+(r.def?'Web':'Mio AI Voice')+')</span></div>'+
+    '<div class="dacard"><div class="dacard-h"><b>'+esc(c?c.title:"")+'</b><button type="button" data-act="daCard" data-id="'+r.id+'" aria-expanded="'+open+'" aria-label="'+(open?'Collapse':'Expand')+' record">'+(open?'▴':'▾')+'</button></div>'+
+    (open?'<table class="kvt"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x[0])+(x[2]==="c"?' <span class="mt-micro">· custom field</span>':'')+'</td><td>'+kvVal(x[1],r.id)+'</td></tr>').join("")+'</tbody></table>':'')+'</div></div></div>'; }
+/* the application profile's Dynamic Activity tab, as on the lead profile: Activity Type, then the activity, then the user.
+   System Activity offers Mio AI Voice, Mio Platform and the Mio Voice activities on the application's form, and opens on the one holding the latest Mio call */
+function appDaTab(){
+  const form="f_bba", recs=(S.mode==="empty"||!cfg("c1"))?[]:appRecs();
+  const sysList=D.configs.filter(c=>c.sys).concat(D.configs.filter(c=>c.mio&&(c.forms||[]).includes(form)));
+  const defList=D.configs.filter(c=>!c.sys&&!c.mio&&(c.forms||[]).includes(form));
+  const type=S.tl.daType||"system", list=type==="system"?sysList:defList;
+  let sel=S.tl.daCfg;
+  if(!sel||!list.some(c=>c.id===sel)) sel=type==="system"?((recs[0]&&list.some(c=>c.id===recs[0].cfg))?recs[0].cfg:"s1"):(list[0]&&list[0].id);
+  const c=cfg(sel), rows=type==="system"?recs.filter(r=>r.cfg===sel):defaultRecs(sel);
+  const opt=(arr,v)=>arr.map(o=>'<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>'+esc(o[1])+'</option>').join("");
+  return '<div class="dahead"><h2>Dynamic Activity</h2><div class="grow"></div>'+
+    '<select class="inp" data-bind="daType" aria-label="Activity Type">'+opt([["default","Default Dynamic Activity"],["system","System Activity"]],type)+'</select>'+
+    '<select class="inp" data-bind="daCfg" aria-label="Activity">'+opt(list.map(x=>[x.id,x.title+(x.status===false?" (inactive)":"")]),sel)+'</select>'+
+    '<select class="inp" disabled aria-label="User"><option>All Users</option></select></div>'+
+    (rows.length?'<div class="tl">'+rows.map(r=>daRecCard(r,c)).join("")+'</div>'
+      :'<div class="tl"><div class="empty"><div class="ei">'+ICO.clock+'</div><h2>No records in this activity yet</h2><p>'+(type==="system"?'Mio call records for this application show here.':'Records added to this activity on this application show here.')+'</p></div></div>');
+}
 function tlApp(){
   const c1=cfg("c1"), cfgT=c1?c1.title:"Mio Voice - English Hindi (BBA)";
   const prof='<div class="profile"><div class="av">AV</div><div style="flex:1;min-width:0"><div class="pn">Ananya Verma</div><div class="pmeta"><span>Application No. <b>BBA-2026-01842</b></span><span>Form <b>BBA 2026</b></span><span>Stage <b>Application Submitted</b></span><span>Mobile <b>+91 98•••••218</b></span></div></div><span class="badge app">Application</span></div>';
-  if(S.mode==="empty"||!c1) return prof+tlEmpty("application");
-  const r2=[["Mio Call ID","b7e1c4d2-9a0f-4c61-a8e3-5f2d7c9b1a04"],["Mio Call Status","Not Answered"],["Mio Call Type","Outbound"],["Mio Agent DID Number","+91 ******90"],["Mio Call Ended By","Carrier"],["Mio Call Start Date","24 Sep 2026, 01:59 PM"],["Mio AI Voice Agent Name","BBA English Hindi Agent"],["Mio Call Duration Seconds","0"]];
-  const r1=[["Mio Call ID","5c1e9a02-77d4-4b1e-9a3f-2e61c0b8f4a7"],["Mio Call Status","Answered"],["Mio Call Type","Outbound"],["Mio Agent DID Number","+91 ******90"],["Mio Call Ended By","Customer"],["Mio Call Start Date","24 Sep 2026, 01:19 PM"],["Mio AI Voice Agent Name","BBA English Hindi Agent"],["Mio Call Duration Seconds","247"],["Mio Transcript","__TR__"],["Mio Call Recording","__REC__"],["Mio Call Summary","Ananya is keen on BBA with Marketing and wants hostel details. She asked for a callback after 6 PM."],["Callback Request","Yes","c"],["Qualification Status","Qualified","c"],["Preferred Call Time","After 6 PM","c"]];
-  return prof+'<div class="banner info">'+ICO.info+'<div>Each call attempt is one record in the agent\'s Mio config. Click <b>View Activity</b> to open it right here. Application Manager has no "Mio AI updated profile field" entry, because Mio never writes Application fields. Call results live in the config\'s fields.</div></div><div class="tl">'+
+  const tabs=appProfileTabs(); if(S.tl.ptab==="da") return prof+tabs+appDaTab();
+  if(S.mode==="empty"||!c1) return prof+tabs+tlEmpty("application");
+  const R=appRecs(), r2=R[0].rows, r1=R[1].rows;
+  return prof+tabs+'<div class="banner info">'+ICO.info+'<div>Each call attempt is one record in the agent\'s Mio config. Click <b>View Activity</b> to open it right here. Application Manager has no "Mio AI updated profile field" entry, because Mio never writes Application fields. Call results live in the config\'s fields.</div></div><div class="tl">'+
     daItem("t2","24 Sep 2026","02:00 PM",cfgT,"Application 'BBA-2026-01842'","24th September 2026 2:00PM","Ananya Verma",r2,"Not answered, so the transcript, recording, summary and custom fields are empty and hidden.")+
     lineItem("24 Sep 2026","01:58 PM","Mio AI Call Campaign initiated for Application '<b>BBA-2026-01842</b>' from '<b>BBA 2026</b>' by Kavya Nair · campaign BBA Payment Reminder <span class=\"newtag\">NEW AM CODE</span>")+
     daItem("t1","24 Sep 2026","01:20 PM",cfgT,"Application 'BBA-2026-01842'","24th September 2026 1:20PM","Ananya Verma",r1,"")+
@@ -1707,6 +1748,9 @@ ACT.dlTotal=()=>{ S.dl.total=!S.dl.total; render(); };
 ACT.dlRefresh=()=>toast("Refreshed (simulated).");
 /* ---- Timelines ---- */
 ACT.tlWhich=b=>{ S.tl.which=b.dataset.k; render(); };
+ACT.ptab=b=>{ S.tl.ptab=b.dataset.k; render(); };
+ACT.daCard=b=>{ const id=b.dataset.id; S.tl.cardShut[id]=!S.tl.cardShut[id]; render(); };
+ACT.trToggle=b=>{ const id=b.dataset.id; S.tl.trOpen[id]=!S.tl.trOpen[id]; render(); };
 ACT.tlOpen=b=>{ const id=b.dataset.id; S.tl.open[id]=!S.tl.open[id]; render(); };
 ACT.tlGoApp=()=>{ S.tl.which="app"; render(); };
 ACT.goTimeline=b=>{ S.tab="tl"; S.tl.which="app"; render(); syncHash(); window.scrollTo(0,0); if(b.dataset.id!=="ap1") toast("The timeline sample is modelled on Ananya Verma's application."); };
@@ -1765,6 +1809,8 @@ ACT.crCall=b=>{ const a=appById(b.dataset.id), r=a&&(b.dataset.jr==="1"&&a.jobRe
 
 /* ---------------- input bindings ---------------- */
 const BIND={};
+BIND.daType=t=>{ S.tl.daType=t.value; S.tl.daCfg=null; render(); };
+BIND.daCfg=t=>{ S.tl.daCfg=t.value; render(); };
 function rerenderKeep(t,fn){ const key=t.dataset.bind, i=t.dataset.i, pos=t.selectionStart; fn(); const n=document.querySelector('[data-bind="'+key+'"]'+(i!=null?'[data-i="'+i+'"]':'')); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } }
 BIND.daTitle=t=>{ S.da.f.title=t.value; };
 BIND.daAccept=t=>{ S.da.f.accept=t.value; };
@@ -1874,7 +1920,8 @@ function jump(j){
     case "agSarvam": S.tab="ag"; S.ag.mode=null; S.ag.vendor="sarvam"; S.ag.sel="a5"; render(); break;
     case "agBlocked": S.tab="ag"; S.ag.mode=null; S.ag.vendor="bolna"; S.ag.sel="a1"; render(); ACT.agEdit(); { const el=document.querySelector('[data-bind="agF"][data-k="config"]'); if(el){ el.value="s1"; BIND.agF(el); } } break;
     case "agAdd": S.tab="ag"; S.ag.mode=null; render(); ACT.agAdd(); S.ag.f.form="f_phd"; render(); break;
-    case "tl": S.tab="tl"; S.tl.which="app"; S.tl.open={t1:true}; render(); break;
+    case "tl": S.tab="tl"; S.tl.which="app"; S.tl.ptab="timeline"; S.tl.open={t1:true}; render(); break;
+    case "tlDa": S.tab="tl"; S.tl.which="app"; S.tl.ptab="da"; S.tl.daType="system"; S.tl.daCfg=null; S.tl.cardShut={}; render(); break;
     case "lsFilter": S.tab="ls"; S.ls.form="f_bba"; S.ls.afOpen=true; S.ls.draft=[{mod:"da",cfg:"c1",field:"cf_callback",op:"eq",val:"Yes"}]; render(); break;
     case "bcPop": S.tab="bc"; S.ls.form="f_bba"; S.bc.sel=["ap2","ap5","ap8"]; render(); ACT.bcOpen(); break;
     case "crJob": S.tab="cr"; S.cr.job="j1"; S.cr.pop=false; render(); break;
@@ -1892,7 +1939,7 @@ const COV=[
   ["P_02","Dynamic Activity Config → Layout: Description, then the "+SYS_FIELDS.length+" Mio system fields in Default Fields, in the live Mio AI Voice order, each system field marked with the Mio AI Voice icon. No Activity Owner. Custom fields dragged in from Layout Elements and removed freely. Limit meter, and Show Limit with the config limit and the custom field limit (+100 each, system fields excluded).","cov"],
   ["P_03","Dynamic Activity Config list: Mio configs show their modules in Applicable On like any config, with no module-plus-Mio label, and the Modules filter offers Lead Manager, Opportunity Manager and Application Manager. Mio AI Voice now also applies to Application Manager (Lead Manager +2). Mio AI Voice and Mio Platform stay greyed, deactivation is blocked while agents use a config, and Mio configs have no Delete. Edit mode: the title, the Mio choice, the module and the form are locked.","cov"],
   ["P_04","Agent Management: Application Manager group (forms with nested agents, search) for Bolna and Sarvam agents. Add and edit with an internal-only vendor choice and each vendor's identity fields, an onboarding note, a form locked after save, Select Mio Voice Activity inside Goal &amp; mapping (Mio AI Voice always listed first, then the form's Mio Voice activities), optional goal mapping set together or not at all (custom fields only; Not set when skipped), the live goal dropdowns, Context Mapping grouped by every config on the form with View JSON, one agent ID per form, and config change and delete both blocked while the agent is busy (live automation, calls running or scheduled retries).","cov"],
-  ["P_05","Timelines: inline View Activity card on the application (Description, then system and custom fields, empty ones hidden), the lead pointer line, the inbound fallback record on the lead, and each entry's activity note written from the owner (Mio AI Voice) and description (Dynamic Activity Created by Mio AI Calling).","cov"],
+  ["P_05","Timelines: inline View Activity card on the application (Description, then system and custom fields, empty ones hidden), the lead pointer line, the inbound fallback record on the lead, and each entry's activity note written from the owner (Mio AI Voice) and description (Dynamic Activity Created by Mio AI Calling). The application profile also has a Dynamic Activity tab: System Activity offers Mio AI Voice, Mio Platform and the form's Mio Voice activities, opens on the one holding the latest call, and lists its records newest first in the same card; Default Dynamic Activity never shows them.","cov"],
   ["P_06","Listing: Advanced Filter: Dynamic Activity as the third module, then Select Activity (the config) and one of its fields, operators by type, latest-record matching, Is Empty vs Has no record, and the 20/3 caps shown. Only one AND group is simulated.","par"],
   ["P_08","Bulk Campaign: Bulk Action → Send to Mio AI Voice with no form picker, only the form's agents (Bolna and Sarvam), scheduled or immediate retry, a charged test call, cost preview, the METS gate and a no-phone skip notice.","cov"],
   ["P_09","Communication Report: Source chips including Application Manager and Application Manager Auto. Job report with Job ID, Automation ID, Job from: Application Manager plus an ⓘ for the form, application KPIs (Goal Achieved shows Not set when the job's agent has no goal mapping), Applications Overview, call details, and Download columns with transcript and summary (for Lead Manager and Opportunity Manager too) and no recording URL.","cov"],
@@ -1927,6 +1974,7 @@ const ASSUME=[
   "<b>Download column dropped.</b> Application Stage at Call Time came out of the job report's Download, since that system field is gone. <i>Owner: Product.</i>",
   "<b>Module fixed at creation.</b> A Mio config's one module, and on Application Manager its one form, are picked only when it's created and can't be changed afterwards. <i>Owner: Product.</i>",
   "<b>One opportunity list per Mio config.</b> A Mio config on Opportunity picks exactly one opportunity list, like one form on Application Manager, and it's locked once saved. The lists in the sample are invented. <i>Owner: Product.</i>",
+  "<b>Dynamic Activity tab default.</b> In the prototype the application's Dynamic Activity tab opens on System Activity, so the Mio records show straight away. In the product it opens as it does today until the open decision in Story 12 is made. <i>Owner: Product.</i>",
   "<b>Config limit.</b> Show Limit shows a package limit of 50 configs, a sample number, plus the +100 add-on. Whether inactive configs and the system configs count follows today's rule, for the DA team to confirm. <i>Owner: DA team.</i>"
 ];
 const SIMS=[
@@ -1943,7 +1991,7 @@ const SIMS=[
 ];
 function renderNotes(){
   const st=[["populated","Populated"],["empty","Empty"],["loading","Loading"],["error","Error"],["edge","Edge"]];
-  const J=[["daList","DA config list"],["daPopup","New Dynamic Activity menu"],["daNew","New Mio config (Step 1)"],["daMap","Applicable For Mapping"],["daLayout","Layout (Step 2)"],["daEdit","Edit a Mio config"],["dlSys","DA listing: System Activity"],["agDetail","Agent detail"],["agMioAI","Agent on Mio AI Voice"],["agAdd","Add agent (form with only Mio AI Voice)"],["agSarvam","Sarvam agent"],["agBlocked","Config change blocked"],["tl","Application timeline"],["lsFilter","Advanced Filter: DA"],["bcPop","Campaign pop-up"],["crJob","Job report"],["crNoGoal","Job: no goal mapping"],["insAM","Dashboard: Application Manager"]];
+  const J=[["daList","DA config list"],["daPopup","New Dynamic Activity menu"],["daNew","New Mio config (Step 1)"],["daMap","Applicable For Mapping"],["daLayout","Layout (Step 2)"],["daEdit","Edit a Mio config"],["dlSys","DA listing: System Activity"],["agDetail","Agent detail"],["agMioAI","Agent on Mio AI Voice"],["agAdd","Add agent (form with only Mio AI Voice)"],["agSarvam","Sarvam agent"],["agBlocked","Config change blocked"],["tl","Application timeline"],["tlDa","Application profile: Dynamic Activity"],["lsFilter","Advanced Filter: DA"],["bcPop","Campaign pop-up"],["crJob","Job report"],["crNoGoal","Job: no goal mapping"],["insAM","Dashboard: Application Manager"]];
   $("#notesBody").innerHTML='<h3>State</h3><div class="statebtns">'+st.map(s=>'<button type="button" data-act="state" data-state="'+s[0]+'" aria-pressed="'+(S.mode===s[0])+'">'+s[1]+'</button>').join("")+'</div>'+
     '<p class="mt-micro" style="margin-top:8px">Applies to every tab and reloads the sample data. Empty is a first-run institute with no Application Manager Mio configs, agents or calls. Edge loads 16 forms, a Mio config with 40 custom fields, a very long agent name, 214 BBA applications and a METS balance too low to launch.</p>'+
     '<div class="acctrow"><button type="button" class="switch sm" role="switch" aria-checked="'+S.acct+'" data-act="acct" aria-label="Account has Mio AI Voice and Application Manager"></button><span>Account has <b>Mio AI Voice + Application Manager</b>. Turn it off to see the Mio Voice activity menu, the Application Manager agent group and the dashboard option disappear.</span></div>'+
@@ -1952,6 +2000,10 @@ function renderNotes(){
     '<h3>Assumptions: the prototype talking back to the PRD</h3><ol>'+ASSUME.map(a=>'<li>'+a+'</li>').join("")+'</ol>'+
     '<h3>What is simulated</h3><ul>'+SIMS.map(s=>'<li>'+s+'</li>').join("")+'</ul>'+
     '<h3>Changelog</h3><ul>'+
+    '<li><b>v2</b>, 7 Oct 2026, with PRD v14:<ol>'+
+    '<li>Application profile. <b>Added:</b> a Dynamic Activity tab next to Timeline, as on the lead profile. System Activity offers Mio AI Voice, Mio Platform and the form\'s Mio Voice activities, and opens on the one holding the latest call. Records show newest first, in the same card as the timeline.</li>'+
+    '<li>Record card. <b>Changed:</b> the transcript opens with View Transcript, as on the lead profile.</li>'+
+    '</ol></li>'+
     '<li><b>v2</b>, 7 Oct 2026, with PRD v13:<ol>'+
     '<li>Name. <b>Changed:</b> Mio Voice config form is now Mio Voice activity everywhere, including the agent\'s Select Mio Voice Activity picker.</li>'+
     '</ol></li>'+
