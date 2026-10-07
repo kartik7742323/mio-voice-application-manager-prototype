@@ -303,6 +303,7 @@ select.inp:disabled{background:var(--bg-subtler);color:var(--fg-3)}
 .modopt{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--border-2);width:100%;text-align:left}
 .modopt[aria-selected="true"]{background:var(--brand-blue-50);font-weight:var(--fw-600)}
 .modopt[aria-disabled="true"]{color:var(--fg-4);cursor:not-allowed}
+.modopt[aria-disabled="true"][aria-selected="true"]{color:var(--fg-1)}
 .modopt .ok{margin-left:auto;width:18px;height:18px;border-radius:var(--r-pill);background:var(--success-fg);color:#fff;display:grid;place-items:center;font-size:11px}
 .modopt .why{margin-left:auto;font-size:var(--fs-11);color:var(--fg-4);font-weight:var(--fw-400)}
 .chk{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-4);border-bottom:1px solid var(--border-2);cursor:pointer}
@@ -951,7 +952,7 @@ function daStep1(){
   const mt=modsText(f);
   const title='<div class="f" style="margin-bottom:12px"><label for="daTitle">Activity Title <span class="req">*</span></label><div style="position:relative"><input class="inp'+(ed&&L?' readonly':'')+'" id="daTitle" data-bind="daTitle" maxlength="50" value="'+esc(f.title)+'" placeholder="What title would you like for Dynamic Activity?" '+(ed&&L?'readonly aria-readonly="true"':'')+' style="padding-right:90px"><span class="maxc">Max 50 char</span></div>'+
     (ed&&L?'<div class="hint">A Mio config\'s title is set when it\'s created and can\'t be edited.</div>':(L?'<div class="hint">You won\'t be able to change the title after saving.</div>':''))+'</div>';
-  const module='<div class="f" style="margin:12px 0"><label>Activity Applicable On Module <span class="req">*</span></label><button type="button" class="fakesel" data-act="daOpenMap">'+(mt?esc(mt):'<span class="ph">Select applicable for</span>')+'<span class="caret2">'+ICO.chev+'</span></button>'+(L?'<div class="hint">'+(ed?'Application Manager and its form were set when this config was created and can\'t be changed. Lead Manager and Opportunity Manager can still be changed.':'Only Application Manager agents write to Mio configs in this release. Pick the one application form whose agents can use this config; you can\'t change it after saving. Lead Manager and Opportunity Manager can be mapped too; their agents keep writing to Mio AI Voice.')+'</div>':'')+'</div>';
+  const module='<div class="f" style="margin:12px 0"><label>Activity Applicable On Module <span class="req">*</span></label><button type="button" class="fakesel" data-act="daOpenMap">'+(mt?esc(mt):'<span class="ph">Select applicable for</span>')+'<span class="caret2">'+ICO.chev+'</span></button>'+(L?'<div class="hint">'+(ed?'The module and form were set when this config was created and can\'t be changed.':'Pick one module. On Application Manager, also pick the one application form whose agents can use this config. You can\'t change either after saving. Only Application Manager agents write to Mio configs in this release; Lead Manager and Opportunity Manager agents keep writing to Mio AI Voice.')+'</div>':'')+'</div>';
   /* on a Mio config the fixed settings are hidden entirely, not shown as locked */
   const accept=L?'':'<div class="setcard"><span class="ico">'+ICO.user+'</span><div class="txt"><div class="t">Accept Activity From</div><div class="d">Accept Activity only through only API</div></div><select class="inp" style="width:auto" data-bind="daAccept" aria-label="Accept Activity From">'+["Only-API","From-Web","Both-API-Web"].map(o=>'<option'+(f.accept===o?' selected':'')+'>'+o+'</option>').join("")+'</select></div>';
   const settings=L?'':
@@ -973,16 +974,17 @@ function mioCard(f,ed){
 }
 function daMap(){
   const f=S.da.f, L=f.mio, ed=!!S.da.editId;
-  /* a Mio config works on exactly one application form, picked when it's created; Application Manager and that form are fixed after save */
+  /* a Mio config works on exactly one module and, on Application Manager, one application form; both are picked when it's created and fixed after save */
   const amLocked=L&&ed;
-  const opt=(id,label)=>{ const sel=S.da.mapMods.includes(id), lock=amLocked&&id==="am";
-    return '<button type="button" class="modopt" role="option" aria-selected="'+sel+'" data-act="mapMod" data-id="'+id+'"'+(lock?' aria-disabled="true" data-why="Application Manager and its form are set when a Mio config is created and can\'t be changed."':'')+'>'+label+(lock?' <span class="mt-micro">'+ICO.lock+' fixed</span>':'')+(sel?'<span class="ok">✓</span>':'')+'</button>'; };
+  const opt=(id,label)=>{ const sel=S.da.mapMods.includes(id), lock=amLocked;
+    return '<button type="button" class="modopt" role="option" aria-selected="'+sel+'" data-act="mapMod" data-id="'+id+'"'+(lock?' aria-disabled="true" data-why="A Mio config\'s module and form are set when it\'s created and can\'t be changed."':'')+'>'+label+(lock&&sel?' <span class="mt-micro">'+ICO.lock+' fixed</span>':'')+(sel?'<span class="ok">✓</span>':'')+'</button>'; };
   const q=(S.da.mapSearch||"").toLowerCase();
   const forms=D.forms.filter(x=>!q||x.n.toLowerCase().includes(q));
   const amOn=S.da.mapMods.includes("am");
   const search='<div style="padding:10px 12px"><input class="inp" placeholder="Search value" data-bind="mapSearch" value="'+esc(S.da.mapSearch||"")+'" aria-label="Search forms"></div>';
   let col;
-  if(!amOn) col='<p class="mt-meta" style="padding:16px">'+(amLocked?'This Mio config was saved without Application Manager. Application Manager and its form can only be set when a Mio config is created. To use one on an application form, create a new Mio config.':'Select Application Manager on the left to pick '+(L?'the form.':'forms.'))+'</p>';
+  const modName={lm:"Lead Manager",op:"Opportunity Manager"}[S.da.mapMods[0]];
+  if(!amOn) col='<p class="mt-meta" style="padding:16px">'+(L?(amLocked?'This Mio config is on <b>'+(modName||"no module")+'</b>. Its module was set when it was created and can\'t be changed. To use one on another module, create a new Mio config.':(modName?'No form is needed on '+modName+'.':'Pick one module on the left. On Application Manager, you\'ll also pick one form.')):'Select Application Manager on the left to pick forms.')+'</p>';
   else if(amLocked) col='<div style="padding:12px"><label class="chk" style="cursor:default"><input type="radio" checked disabled aria-label="'+esc(formName(S.da.mapForms[0]))+'"><span>'+esc(formName(S.da.mapForms[0]))+'</span></label><p class="mt-meta" style="margin:8px 4px 0">'+ICO.lock+' Set when this config was created. A Mio config works on one application form, and it can\'t be changed. To use these fields on another form, create a new Mio config there.</p></div>';
   else if(L) col=search+'<p class="mt-micro" style="padding:0 12px 6px">Pick one form. A Mio config works on one application form only.</p><div role="radiogroup" aria-label="Application form" style="overflow-y:auto;max-height:380px">'+(forms.map(x=>{ const on=S.da.mapForms[0]===x.id;
       return '<label class="chk" title="'+esc(x.n)+'"><input type="radio" name="mioForm" data-act="mapForm1" data-id="'+x.id+'" '+(on?'checked':'')+'><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.n)+'</span></label>'; }).join("")||'<p class="mt-meta" style="padding:12px">No forms match.</p>')+'</div>';
@@ -990,7 +992,7 @@ function daMap(){
      '<div style="overflow-y:auto;max-height:380px">'+(forms.map(x=>{ const on=S.da.mapForms.includes(x.id);
         return '<label class="chk" title="'+esc(x.n)+'"><input type="checkbox" data-act="mapForm" data-id="'+x.id+'" '+(on?'checked':'')+'><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.n)+'</span></label>'; }).join("")||'<p class="mt-meta" style="padding:12px">No forms match.</p>')+'</div>';
   return '<div class="drawer-head"><button type="button" class="modal-close" data-act="mapBack" aria-label="Back to Step 1" style="margin-left:0">'+ICO.back+'</button><h2 id="drawerTitle">Applicable For Mapping</h2><div class="grow"></div><button type="button" class="modal-close" data-act="closeDrawer" aria-label="Close">'+ICO.x+'</button></div>'+
-  '<div class="drawer-body"><div class="banner info">'+ICO.info+'<div>Select from Form List and map it to desired option.'+(L?' A Mio config works on one application form, and only Application Manager agents on that form can pick it. Lead Manager and Opportunity Manager agents keep writing to Mio AI Voice.':'')+'</div></div>'+
+  '<div class="drawer-body"><div class="banner info">'+ICO.info+'<div>Select from Form List and map it to desired option.'+(L?' A Mio config works on one module and, on Application Manager, one application form. Only Application Manager agents on that form can pick it; Lead Manager and Opportunity Manager agents keep writing to Mio AI Voice.':'')+'</div></div>'+
   (S.da.mapErr?'<div class="banner err" role="alert">'+ICO.alert+'<div>'+S.da.mapErr+'</div></div>':'')+
   '<div class="mapwrap"><div class="mapcol" role="listbox" aria-label="Applicable For Options"><div class="mh">Applicable For Options</div>'+opt("am","Application Manager")+opt("lm","Lead Manager")+opt("op","Opportunity")+'</div>'+
   '<div class="mapcol"><div class="mh">'+(L?'Application Manager Form':'Application Manager List')+'</div>'+col+'</div></div></div>'+
@@ -1601,17 +1603,20 @@ ACT.daLimit=()=>{ const used=Object.keys(D.fieldLib).length+27, cfgUsed=D.config
 ACT.daOpenMap=()=>{ const f=S.da.f; S.da.mapMods=f.mods.slice(); S.da.mapForms=f.forms.slice(); S.da.mapErr=""; S.da.mapSearch=""; S.drawer="map"; renderDrawer(); };
 ACT.mapBack=()=>{ S.drawer="step1"; renderDrawer(); };
 ACT.mapMod=b=>{ const id=b.dataset.id, m=S.da.mapMods, i=m.indexOf(id);
+  /* a Mio config takes one module: picking another replaces it, and leaving Application Manager clears the form */
+  if(S.da.f.mio){ S.da.mapMods=[id]; if(id!=="am") S.da.mapForms=[]; S.da.mapErr=""; renderDrawer(); return; }
   if(i>=0) m.splice(i,1); else m.push(id); S.da.mapErr=""; renderDrawer(); };
 ACT.mapForm=b=>{ const id=b.dataset.id, arr=S.da.mapForms, i=arr.indexOf(id); if(i>=0) arr.splice(i,1); else arr.push(id); S.da.mapErr=""; renderDrawer(); };
 ACT.mapAll=()=>{ const q=(S.da.mapSearch||"").toLowerCase(), ids=D.forms.filter(x=>!q||x.n.toLowerCase().includes(q)).map(x=>x.id), all=ids.every(id=>S.da.mapForms.includes(id));
   S.da.mapForms=all?S.da.mapForms.filter(x=>!ids.includes(x)):S.da.mapForms.concat(ids.filter(id=>!S.da.mapForms.includes(id))); S.da.mapErr=""; renderDrawer(); };
 /* a Mio config works on exactly one application form */
 ACT.mapForm1=b=>{ S.da.mapForms=[b.dataset.id]; S.da.mapErr=""; renderDrawer(); };
-ACT.mapSave=b=>{ const f=S.da.f; f.mods=S.da.mapMods.slice(); f.forms=f.mods.includes("am")?(f.mio?S.da.mapForms.slice(0,1):S.da.mapForms.slice()):[]; S.drawer="step1"; if(b.dataset.exit==="1") ACT.daSave({dataset:{next:"0"}}); else renderDrawer(); };
+ACT.mapSave=b=>{ const f=S.da.f; f.mods=f.mio?S.da.mapMods.slice(0,1):S.da.mapMods.slice(); f.forms=f.mods.includes("am")?(f.mio?S.da.mapForms.slice(0,1):S.da.mapForms.slice()):[]; S.drawer="step1"; if(b.dataset.exit==="1") ACT.daSave({dataset:{next:"0"}}); else renderDrawer(); };
 ACT.daSave=b=>{ const f=S.da.f, e=[], t=f.title.trim().toLowerCase();
   if(!f.title.trim()) e.push("Activity Title is required.");
   else if(!S.da.editId&&(t==="mio ai voice"||t==="mio platform")) e.push("\""+esc(f.title.trim())+"\" is reserved for a system config. Choose another title.");
   if(!f.mods.length) e.push("Pick where this activity applies (Activity Applicable On Module).");
+  if(f.mio&&f.mods.length>1) e.push("A Mio config applies to one module only.");
   if(f.mio&&f.mods.includes("am")&&f.forms.length!==1) e.push("Pick the application form for this Mio config.");
   if(!f.mio&&!f.never&&!f.start) e.push("Start Date is required.");
   S.da.errs=e; if(e.length){ renderDrawer(); const bd=$("#drawer .drawer-body"); if(bd) bd.scrollTop=0; return; }
@@ -1850,9 +1855,9 @@ function readHash(){ const h={}; location.hash.replace(/^#/,"").split("&").forEa
 
 /* ---------------- notes panel ---------------- */
 const COV=[
-  ["P_01","Dynamic Activity Config → New: New Dynamic Activity opens a menu, <i>What kind of activity?</i>, before the form opens. Mio Voice activity opens a Mio Voice config form with the fixed settings (system-only entry, predated, score, limit, delete, edit, dates) hidden, not shown as locked; Regular activity opens the normal form. There's no toggle in the form. The mapping offers Lead Manager, Opportunity Manager and Application Manager; for Application Manager exactly one form is picked, from a single-choice list. A note says a Mio config can't be deleted once it's created, only deactivated.","cov"],
+  ["P_01","Dynamic Activity Config → New: New Dynamic Activity opens a menu, <i>What kind of activity?</i>, before the form opens. Mio Voice activity opens a Mio Voice config form with the fixed settings (system-only entry, predated, score, limit, delete, edit, dates) hidden, not shown as locked; Regular activity opens the normal form. There's no toggle in the form. The mapping offers Lead Manager, Opportunity Manager and Application Manager, and a Mio config picks exactly one of them; on Application Manager it also picks exactly one form, from a single-choice list. A note says a Mio config can't be deleted once it's created, only deactivated.","cov"],
   ["P_02","Dynamic Activity Config → Layout: Description, then the "+SYS_FIELDS.length+" Mio system fields in Default Fields, in the live Mio AI Voice order, each system field marked with the Mio AI Voice icon. No Activity Owner. Custom fields dragged in from Layout Elements and removed freely. Limit meter, and Show Limit with the config limit and the custom field limit (+100 each, system fields excluded).","cov"],
-  ["P_03","Dynamic Activity Config list: Mio configs show their modules in Applicable On like any config, with no module-plus-Mio label, and the Modules filter offers Lead Manager, Opportunity Manager and Application Manager. Mio AI Voice now also applies to Application Manager (Lead Manager +2). Mio AI Voice and Mio Platform stay greyed, deactivation is blocked while agents use a config, and Mio configs have no Delete. Edit mode: the title, the Mio choice, Application Manager and its one form are locked; Lead Manager and Opportunity Manager can still be changed.","cov"],
+  ["P_03","Dynamic Activity Config list: Mio configs show their modules in Applicable On like any config, with no module-plus-Mio label, and the Modules filter offers Lead Manager, Opportunity Manager and Application Manager. Mio AI Voice now also applies to Application Manager (Lead Manager +2). Mio AI Voice and Mio Platform stay greyed, deactivation is blocked while agents use a config, and Mio configs have no Delete. Edit mode: the title, the Mio choice, the module and the form are locked.","cov"],
   ["P_04","Agent Management: Application Manager group (forms with nested agents, search) for Bolna and Sarvam agents. Add and edit with an internal-only vendor choice and each vendor's identity fields, an onboarding note, a form locked after save, Select Mio Voice Config Form inside Goal &amp; mapping (Mio AI Voice always listed first, then the form's Mio Voice config forms), optional goal mapping set together or not at all (custom fields only; Not set when skipped), the live goal dropdowns, Context Mapping grouped by every config on the form with View JSON, one agent ID per form, and config change and delete both blocked while the agent is busy (live automation, calls running or scheduled retries).","cov"],
   ["P_05","Timelines: inline View Activity card on the application (Description, then system and custom fields, empty ones hidden), the lead pointer line, the inbound fallback record on the lead, and each entry's activity note written from the owner (Mio AI Voice) and description (Dynamic Activity Created by Mio AI Calling).","cov"],
   ["P_06","Listing: Advanced Filter: Dynamic Activity as the third module, then Select Activity (the config) and one of its fields, operators by type, latest-record matching, Is Empty vs Has no record, and the 20/3 caps shown. Only one AND group is simulated.","par"],
@@ -1887,12 +1892,12 @@ const ASSUME=[
   "<b>Goal mapping set together.</b> Goal Mapping Field and Goal Mapping Value are both set or both Not set; saving one without the other is blocked. <i>Owner: Product.</i>",
   "<b>Same system fields everywhere.</b> Mio Voice config forms and Mio AI Voice have the same 11 system fields as Lead Manager today. Nothing is added for Application Manager or Opportunity Manager, and there's no Mio Agent DID Dial Code. <i>Owner: Engineering to confirm storage.</i>",
   "<b>Download column dropped.</b> Application Stage at Call Time came out of the job report's Download, since that system field is gone. <i>Owner: Product.</i>",
-  "<b>Application Manager fixed at creation.</b> A Mio config saved without Application Manager can't add it later, and one saved with it can't drop it, because its one form is picked only when it's created. <i>Owner: Product.</i>",
+  "<b>Module fixed at creation.</b> A Mio config's one module, and on Application Manager its one form, are picked only when it's created and can't be changed afterwards. <i>Owner: Product.</i>",
   "<b>Config limit.</b> Show Limit shows a package limit of 50 configs, a sample number, plus the +100 add-on. Whether inactive configs and the system configs count follows today's rule, for the DA team to confirm. <i>Owner: DA team.</i>"
 ];
 const SIMS=[
   "Everything is in-memory sample data with invented people and an invented institute. A reload resets it.",
-  "Saving is instant here. The real build must also enforce every rule on the server: system-only entry, one agent ID per form, one form per Mio config, the deactivation guard, the no-delete rule and module isolation.",
+  "Saving is instant here. The real build must also enforce every rule on the server: system-only entry, one agent ID per form, one module and one form per Mio config, the deactivation guard, the no-delete rule and module isolation.",
   "Nothing is sent to Bolna or Sarvam. Test calls, dispatch, pingbacks, METS reservation and settlement are only shown, not run.",
   "Recording playback is a visual stand-in. The real player streams through a short-lived link that is never shown.",
   "Dashboard numbers, the chart and the heatmap come from seeded sample data, not a real calculation.",
@@ -1913,6 +1918,9 @@ function renderNotes(){
     '<h3>Assumptions: the prototype talking back to the PRD</h3><ol>'+ASSUME.map(a=>'<li>'+a+'</li>').join("")+'</ol>'+
     '<h3>What is simulated</h3><ul>'+SIMS.map(s=>'<li>'+s+'</li>').join("")+'</ul>'+
     '<h3>Changelog</h3><ul>'+
+    '<li><b>v2</b>, 7 Oct 2026, with PRD v9:<ol>'+
+    '<li>Mio config modules. <b>Changed:</b> a Mio config applies to exactly one module: Lead Manager, Opportunity Manager or Application Manager. Picking another module replaces the first. The module is fixed once the config is saved, like its form.</li>'+
+    '</ol></li>'+
     '<li><b>v2</b>, 7 Oct 2026, with PRD v8:<ol>'+
     '<li>Mio config mapping. <b>Changed:</b> a Mio config is mapped to exactly one application form, picked from a single-choice list when it\'s created. The form, and Application Manager, can\'t be changed afterwards.</li>'+
     '<li>Sample data. <b>Changed:</b> Mio Voice - Admissions Follow-up now covers MBA 2026 only. The B.Tech agent uses a new config, Mio Voice - Counselling (B.Tech).</li>'+
