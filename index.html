@@ -999,9 +999,11 @@ function daMap(){
       (locked?lockedNote('Set when this config was created. A Mio config\'s module can\'t be changed. To use one on another module, create a new Mio config.'):'');
   } else if(open==="op"){
     head="Opportunity List";
-    if(locked) col=OPP_LISTS.filter(x=>S.da.mapOpps.includes(x.id)).map(x=>row("checkbox","","",x.n,true)).join("")+lockedNote('Set when this config was created. A Mio config\'s module and opportunity lists can\'t be changed. To use one elsewhere, create a new Mio config.');
+    if(locked) col=OPP_LISTS.filter(x=>S.da.mapOpps.includes(x.id)).map(x=>row("radio","","",x.n,true)).join("")+lockedNote('Set when this config was created. A Mio config works on one opportunity list, and it can\'t be changed. To use these fields on another list, create a new Mio config there.');
     else { const lists=OPP_LISTS.filter(x=>!q||x.n.toLowerCase().includes(q));
-      col=(L?fixNote('Once this config is saved, its module and opportunity lists can\'t be changed.'):'')+search("opportunity lists")+
+      col=L?fixNote('Once this config is saved, its module and opportunity list can\'t be changed.')+search("opportunity lists")+'<p class="mt-micro" style="padding:0 12px 6px">Pick one list.</p>'+
+        '<div role="radiogroup" aria-label="Opportunity list" style="overflow-y:auto;max-height:340px">'+(lists.map(x=>row("radio","mapOpp1",x.id,x.n,S.da.mapOpps[0]===x.id,"mioOpp")).join("")||empty)+'</div>'
+        :search("opportunity lists")+
         '<label class="chk"><input type="checkbox" data-act="mapOppAll" '+(lists.length&&lists.every(x=>S.da.mapOpps.includes(x.id))?'checked':'')+'><b>Select all</b></label>'+
         '<div style="overflow-y:auto;max-height:340px">'+(lists.map(x=>row("checkbox","mapOpp",x.id,x.n,S.da.mapOpps.includes(x.id))).join("")||empty)+'</div>'; }
   } else {
@@ -1636,16 +1638,19 @@ ACT.mapAll=()=>{ const q=(S.da.mapSearch||"").toLowerCase(), ids=D.forms.filter(
 /* a Mio config works on exactly one application form */
 ACT.mapForm1=b=>{ mioKeepOnly("am"); S.da.mapForms=[b.dataset.id]; S.da.mapErr=""; renderDrawer(); };
 ACT.mapLeads=()=>{ S.da.mapLeads=!S.da.mapLeads; if(S.da.mapLeads) mioKeepOnly("lm"); S.da.mapErr=""; renderDrawer(); };
+/* a Mio config works on exactly one opportunity list */
+ACT.mapOpp1=b=>{ mioKeepOnly("op"); S.da.mapOpps=[b.dataset.id]; S.da.mapErr=""; renderDrawer(); };
 ACT.mapOpp=b=>{ const id=b.dataset.id, i=S.da.mapOpps.indexOf(id); if(i>=0) S.da.mapOpps.splice(i,1); else { mioKeepOnly("op"); S.da.mapOpps.push(id); } S.da.mapErr=""; renderDrawer(); };
 ACT.mapOppAll=()=>{ const q=(S.da.mapSearch||"").toLowerCase(), ids=OPP_LISTS.filter(x=>!q||x.n.toLowerCase().includes(q)).map(x=>x.id), all=ids.every(id=>S.da.mapOpps.includes(id));
   if(all) S.da.mapOpps=S.da.mapOpps.filter(x=>!ids.includes(x)); else { mioKeepOnly("op"); S.da.mapOpps=S.da.mapOpps.concat(ids.filter(id=>!S.da.mapOpps.includes(id))); } S.da.mapErr=""; renderDrawer(); };
-ACT.mapSave=b=>{ const f=S.da.f, mods=pickedMods(); f.mods=f.mio?mods.slice(0,1):mods; f.forms=f.mods.includes("am")?(f.mio?S.da.mapForms.slice(0,1):S.da.mapForms.slice()):[]; f.leads=f.mods.includes("lm"); f.opps=f.mods.includes("op")?S.da.mapOpps.slice():[]; S.drawer="step1"; if(b.dataset.exit==="1") ACT.daSave({dataset:{next:"0"}}); else renderDrawer(); };
+ACT.mapSave=b=>{ const f=S.da.f, mods=pickedMods(); f.mods=f.mio?mods.slice(0,1):mods; f.forms=f.mods.includes("am")?(f.mio?S.da.mapForms.slice(0,1):S.da.mapForms.slice()):[]; f.leads=f.mods.includes("lm"); f.opps=f.mods.includes("op")?(f.mio?S.da.mapOpps.slice(0,1):S.da.mapOpps.slice()):[]; S.drawer="step1"; if(b.dataset.exit==="1") ACT.daSave({dataset:{next:"0"}}); else renderDrawer(); };
 ACT.daSave=b=>{ const f=S.da.f, e=[], t=f.title.trim().toLowerCase();
   if(!f.title.trim()) e.push("Activity Title is required.");
   else if(!S.da.editId&&(t==="mio ai voice"||t==="mio platform")) e.push("\""+esc(f.title.trim())+"\" is reserved for a system config. Choose another title.");
   if(!f.mods.length) e.push("Pick where this activity applies (Activity Applicable On Module).");
   if(f.mio&&f.mods.length>1) e.push("A Mio config applies to one module only.");
   if(f.mio&&f.mods.includes("am")&&f.forms.length!==1) e.push("Pick the application form for this Mio config.");
+  if(f.mio&&f.mods.includes("op")&&(f.opps||[]).length!==1) e.push("Pick one opportunity list for this Mio config.");
   if(!f.mio&&!f.never&&!f.start) e.push("Start Date is required.");
   S.da.errs=e; if(e.length){ renderDrawer(); const bd=$("#drawer .drawer-body"); if(bd) bd.scrollTop=0; return; }
   let c;
@@ -1883,7 +1888,7 @@ function readHash(){ const h={}; location.hash.replace(/^#/,"").split("&").forEa
 
 /* ---------------- notes panel ---------------- */
 const COV=[
-  ["P_01","Dynamic Activity Config → New: New Dynamic Activity opens a menu, <i>What kind of activity?</i>, before the form opens. Mio Voice activity opens a Mio Voice config form with the fixed settings (system-only entry, predated, score, limit, delete, edit, dates) hidden, not shown as locked; Regular activity opens the normal form. There's no toggle in the form. In the mapping, clicking a module opens its list, as on the live screen: Leads for Lead Manager, the opportunity lists for Opportunity and the forms for Application Manager. A Mio config picks from one module only; on Application Manager it picks exactly one form, from a single-choice list. A note says a Mio config can't be deleted once it's created, only deactivated.","cov"],
+  ["P_01","Dynamic Activity Config → New: New Dynamic Activity opens a menu, <i>What kind of activity?</i>, before the form opens. Mio Voice activity opens a Mio Voice config form with the fixed settings (system-only entry, predated, score, limit, delete, edit, dates) hidden, not shown as locked; Regular activity opens the normal form. There's no toggle in the form. In the mapping, clicking a module opens its list, as on the live screen: Leads for Lead Manager, the opportunity lists for Opportunity and the forms for Application Manager. A Mio config picks from one module only, and exactly one item there: Leads, one opportunity list or one form, each from a single-choice list. A note says a Mio config can't be deleted once it's created, only deactivated.","cov"],
   ["P_02","Dynamic Activity Config → Layout: Description, then the "+SYS_FIELDS.length+" Mio system fields in Default Fields, in the live Mio AI Voice order, each system field marked with the Mio AI Voice icon. No Activity Owner. Custom fields dragged in from Layout Elements and removed freely. Limit meter, and Show Limit with the config limit and the custom field limit (+100 each, system fields excluded).","cov"],
   ["P_03","Dynamic Activity Config list: Mio configs show their modules in Applicable On like any config, with no module-plus-Mio label, and the Modules filter offers Lead Manager, Opportunity Manager and Application Manager. Mio AI Voice now also applies to Application Manager (Lead Manager +2). Mio AI Voice and Mio Platform stay greyed, deactivation is blocked while agents use a config, and Mio configs have no Delete. Edit mode: the title, the Mio choice, the module and the form are locked.","cov"],
   ["P_04","Agent Management: Application Manager group (forms with nested agents, search) for Bolna and Sarvam agents. Add and edit with an internal-only vendor choice and each vendor's identity fields, an onboarding note, a form locked after save, Select Mio Voice Config Form inside Goal &amp; mapping (Mio AI Voice always listed first, then the form's Mio Voice config forms), optional goal mapping set together or not at all (custom fields only; Not set when skipped), the live goal dropdowns, Context Mapping grouped by every config on the form with View JSON, one agent ID per form, and config change and delete both blocked while the agent is busy (live automation, calls running or scheduled retries).","cov"],
@@ -1921,7 +1926,7 @@ const ASSUME=[
   "<b>Same system fields everywhere.</b> Mio Voice config forms and Mio AI Voice have the same 11 system fields as Lead Manager today. Nothing is added for Application Manager or Opportunity Manager, and there's no Mio Agent DID Dial Code. <i>Owner: Engineering to confirm storage.</i>",
   "<b>Download column dropped.</b> Application Stage at Call Time came out of the job report's Download, since that system field is gone. <i>Owner: Product.</i>",
   "<b>Module fixed at creation.</b> A Mio config's one module, and on Application Manager its one form, are picked only when it's created and can't be changed afterwards. <i>Owner: Product.</i>",
-  "<b>Opportunity lists on a Mio config.</b> A Mio config on Opportunity can tick several opportunity lists, as any config can today, and they're locked once it's saved, like the module. Whether it should be limited to one list, like one form on Application Manager, is open. The lists in the sample are invented. <i>Owner: Product.</i>",
+  "<b>One opportunity list per Mio config.</b> A Mio config on Opportunity picks exactly one opportunity list, like one form on Application Manager, and it's locked once saved. The lists in the sample are invented. <i>Owner: Product.</i>",
   "<b>Config limit.</b> Show Limit shows a package limit of 50 configs, a sample number, plus the +100 add-on. Whether inactive configs and the system configs count follows today's rule, for the DA team to confirm. <i>Owner: DA team.</i>"
 ];
 const SIMS=[
@@ -1947,6 +1952,9 @@ function renderNotes(){
     '<h3>Assumptions: the prototype talking back to the PRD</h3><ol>'+ASSUME.map(a=>'<li>'+a+'</li>').join("")+'</ol>'+
     '<h3>What is simulated</h3><ul>'+SIMS.map(s=>'<li>'+s+'</li>').join("")+'</ul>'+
     '<h3>Changelog</h3><ul>'+
+    '<li><b>v2</b>, 7 Oct 2026, with PRD v11:<ol>'+
+    '<li>Mio config on Opportunity. <b>Changed:</b> it picks exactly one opportunity list, from a single-choice list with no Select all, and the list is locked once the config is saved.</li>'+
+    '</ol></li>'+
     '<li><b>v2</b>, 7 Oct 2026, mapping lists:<ol>'+
     '<li>Applicable For Mapping. <b>Changed:</b> clicking a module on the left opens its list, as on the live screen. Lead Manager shows Leads, Opportunity shows the opportunity lists with search and Select all, and Application Manager shows the forms.</li>'+
     '</ol></li>'+
