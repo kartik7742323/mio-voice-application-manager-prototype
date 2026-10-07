@@ -1315,14 +1315,14 @@ function appDaTab(){
   const defList=D.configs.filter(c=>!c.sys&&!c.mio&&(c.forms||[]).includes(form));
   const type=S.tl.daType||"system", list=type==="system"?sysList:defList;
   let sel=S.tl.daCfg;
-  if(!sel||!list.some(c=>c.id===sel)) sel=type==="system"?((recs[0]&&list.some(c=>c.id===recs[0].cfg))?recs[0].cfg:(list[0]&&list[0].id)):(list[0]&&list[0].id);
-  const c=sel?cfg(sel):null, rows=!sel?[]:type==="system"?recs.filter(r=>r.cfg===sel):defaultRecs(sel);
+  if(!sel||(!list.some(c=>c.id===sel)&&!(sel==="all"&&type==="system"&&list.length))) sel=type==="system"?((recs[0]&&list.some(c=>c.id===recs[0].cfg))?recs[0].cfg:(list[0]&&list[0].id)):(list[0]&&list[0].id);
+  const all=sel==="all", c=(sel&&!all)?cfg(sel):null, rows=!sel?[]:type==="system"?recs.filter(r=>all?list.some(x=>x.id===r.cfg):r.cfg===sel):defaultRecs(sel);
   const opt=(arr,v)=>arr.map(o=>'<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>'+esc(o[1])+'</option>').join("");
   return '<div class="dahead"><h2>Dynamic Activity</h2><div class="grow"></div>'+
     '<select class="inp" data-bind="daType" aria-label="Activity Type">'+opt([["default","Default Dynamic Activity"],["system","System Activity"]],type)+'</select>'+
-    '<select class="inp" data-bind="daCfg" aria-label="Activity"'+(list.length?'>'+opt(list.map(x=>[x.id,x.title+(x.status===false?" (inactive)":"")]),sel):' disabled><option>No activities with records</option>')+'</select>'+
+    '<select class="inp" data-bind="daCfg" aria-label="Activity"'+(list.length?'>'+opt((type==="system"?[["all","All system activities"]]:[]).concat(list.map(x=>[x.id,x.title+(x.status===false?" (inactive)":"")])),sel):' disabled><option>No activities with records</option>')+'</select>'+
     '<select class="inp" disabled aria-label="User"><option>All Users</option></select></div>'+
-    (rows.length?'<div class="tl">'+rows.map(r=>daRecCard(r,c)).join("")+'</div>'
+    (rows.length?'<div class="tl">'+rows.map(r=>daRecCard(r,all?cfg(r.cfg):c)).join("")+'</div>'
       :'<div class="tl"><div class="empty"><div class="ei">'+ICO.clock+'</div><h2>'+(type==="system"&&!list.length?'No system activity on this application yet':'No records in this activity yet')+'</h2><p>'+(type==="system"?'Mio call records for this application show here once a call is made.':'Records added to this activity on this application show here.')+'</p></div></div>');
 }
 function tlApp(){
@@ -1942,7 +1942,7 @@ const COV=[
   ["P_02","Dynamic Activity Config → Layout: Description, then the "+SYS_FIELDS.length+" Mio system fields in Default Fields, in the live Mio AI Voice order, each system field marked with the Mio AI Voice icon. No Activity Owner. Custom fields dragged in from Layout Elements and removed freely. Limit meter, and Show Limit with the config limit and the custom field limit (+100 each, system fields excluded).","cov"],
   ["P_03","Dynamic Activity Config list: Mio configs show their modules in Applicable On like any config, with no module-plus-Mio label, and the Modules filter offers Lead Manager, Opportunity Manager and Application Manager. Mio AI Voice now also applies to Application Manager (Lead Manager +2). Mio AI Voice and Mio Platform stay greyed, deactivation is blocked while agents use a config, and Mio configs have no Delete. Edit mode: the title, the Mio choice, the module and the form are locked.","cov"],
   ["P_04","Agent Management: Application Manager group (forms with nested agents, search) for Bolna and Sarvam agents. Add and edit with an internal-only vendor choice and each vendor's identity fields, an onboarding note, a form locked after save, Select Mio Voice Activity inside Goal &amp; mapping (Mio AI Voice always listed first, then the form's Mio Voice activities), optional goal mapping set together or not at all (custom fields only; Not set when skipped), the live goal dropdowns, Context Mapping grouped by every config on the form with View JSON, one agent ID per form, and config change and delete both blocked while the agent is busy (live automation, calls running or scheduled retries).","cov"],
-  ["P_05","Timelines: inline View Activity card on the application (Description, then system and custom fields, empty ones hidden), the lead pointer line, the inbound fallback record on the lead, and each entry's activity note written from the owner (Mio AI Voice) and description (Dynamic Activity Created by Mio AI Calling). The application profile also has a Dynamic Activity tab: System Activity offers only the system configs that hold records on the application, opens on the one holding the latest call, and lists its records newest first in the same card; Default Dynamic Activity never shows them.","cov"],
+  ["P_05","Timelines: inline View Activity card on the application (Description, then system and custom fields, empty ones hidden), the lead pointer line, the inbound fallback record on the lead, and each entry's activity note written from the owner (Mio AI Voice) and description (Dynamic Activity Created by Mio AI Calling). The application profile also has a Dynamic Activity tab: System Activity offers All system activities plus only the system configs that hold records on the application, opens on the one holding the latest call, and lists its records newest first in the same card; Default Dynamic Activity never shows them.","cov"],
   ["P_06","Listing: Advanced Filter: Dynamic Activity as the third module, then Select Activity (the config) and one of its fields, operators by type, latest-record matching, Is Empty vs Has no record, and the 20/3 caps shown. Only one AND group is simulated.","par"],
   ["P_08","Bulk Campaign: Bulk Action → Send to Mio AI Voice with no form picker, only the form's agents (Bolna and Sarvam), scheduled or immediate retry, a charged test call, cost preview, the METS gate and a no-phone skip notice.","cov"],
   ["P_09","Communication Report: Source chips including Application Manager and Application Manager Auto. Job report with Job ID, Automation ID, Job from: Application Manager plus an ⓘ for the form, application KPIs (Goal Achieved shows Not set when the job's agent has no goal mapping), Applications Overview, call details, and Download columns with transcript and summary (for Lead Manager and Opportunity Manager too) and no recording URL.","cov"],
@@ -2003,6 +2003,9 @@ function renderNotes(){
     '<h3>Assumptions: the prototype talking back to the PRD</h3><ol>'+ASSUME.map(a=>'<li>'+a+'</li>').join("")+'</ol>'+
     '<h3>What is simulated</h3><ul>'+SIMS.map(s=>'<li>'+s+'</li>').join("")+'</ul>'+
     '<h3>Changelog</h3><ul>'+
+    '<li><b>v2</b>, 7 Oct 2026, with PRD v16:<ol>'+
+    '<li>Application profile, Dynamic Activity tab. <b>Added:</b> All system activities at the top of the System Activity list. It shows the records from every listed activity together, newest first, each card naming its activity.</li>'+
+    '</ol></li>'+
     '<li><b>v2</b>, 7 Oct 2026, with PRD v15:<ol>'+
     '<li>Application profile, Dynamic Activity tab. <b>Changed:</b> System Activity lists only the system configs that hold records on the application, whatever form they\'re on. Sample data: Ananya has an older call saved in Mio AI Voice, so the list shows two.</li>'+
     '</ol></li>'+
